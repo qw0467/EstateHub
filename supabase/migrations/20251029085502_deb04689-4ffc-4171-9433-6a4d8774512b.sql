@@ -1,0 +1,128 @@
+-- Create enum for membership tiers
+CREATE TYPE membership_tier AS ENUM ('free', 'monthly', 'yearly');
+
+-- Create enum for membership status
+CREATE TYPE membership_status AS ENUM ('active', 'expired', 'cancelled');
+
+-- Create memberships table
+CREATE TABLE public.memberships (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  tier membership_tier DEFAULT 'free' NOT NULL,
+  status membership_status DEFAULT 'active' NOT NULL,
+  start_date timestamptz DEFAULT now() NOT NULL,
+  end_date timestamptz,
+  auto_renew boolean DEFAULT false,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  updated_at timestamptz DEFAULT now() NOT NULL
+);
+
+-- Enable RLS on memberships
+ALTER TABLE public.memberships ENABLE ROW LEVEL SECURITY;
+
+-- Memberships policies
+CREATE POLICY "Users can view their own membership"
+  ON public.memberships FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own membership"
+  ON public.memberships FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own membership"
+  ON public.memberships FOR UPDATE
+  USING (auth.uid() = user_id);
+
+-- Add is_exclusive column to properties
+ALTER TABLE public.properties
+ADD COLUMN is_exclusive boolean DEFAULT false;
+
+-- Update RLS policy for properties to include exclusive check
+DROP POLICY "Anyone can view available properties" ON public.properties;
+
+CREATE POLICY "Anyone can view non-exclusive available properties"
+  ON public.properties FOR SELECT
+  USING (
+    (status = 'available' AND is_exclusive = false) 
+    OR auth.uid() = agent_id
+  );
+
+CREATE POLICY "Members can view exclusive properties"
+  ON public.properties FOR SELECT
+  USING (
+    is_exclusive = true 
+    AND status = 'available'
+    AND EXISTS (
+      SELECT 1 FROM public.memberships
+      WHERE user_id = auth.uid()
+      AND tier IN ('monthly', 'yearly')
+      AND status = 'active'
+      AND (end_date IS NULL OR end_date > now())
+    )
+  );
+
+-- Create payments table for tracking membership payments
+CREATE TABLE public.payments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  membership_id uuid REFERENCES public.memberships(id) ON DELETE SET NULL,
+  amount numeric NOT NULL,
+  currency text DEFAULT 'USD',
+  payment_method text,
+  payment_status text DEFAULT 'pending' CHECK (payment_status IN ('pending', 'completed', 'failed', 'refunded')),
+  transaction_id text,
+  created_at timestamptz DEFAULT now() NOT NULL
+);
+
+-- Enable RLS on payments
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+
+-- Payments policies
+CREATE POLICY "Users can view their own payments"
+  ON public.payments FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own payments"
+  ON public.payments FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+-- Trigger for memberships updated_at
+CREATE TRIGGER update_memberships_updated_at
+  BEFORE UPDATE ON public.memberships
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Function to check if user has active membership
+CREATE OR REPLACE FUNCTION public.has_active_membership(_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.memberships
+    WHERE user_id = _user_id
+    AND tier IN ('monthly', 'yearly')
+    AND status = 'active'
+    AND (end_date IS NULL OR end_date > now())
+  )
+$$;
+
+-- Insert some exclusive properties
+INSERT INTO public.properties (title, description, price, address, city, state, zip_code, bedrooms, bathrooms, sqft, property_type, image_url, gallery_images, features, is_exclusive)
+VALUES
+  ('Ultra-Luxury Penthouse', 'Exclusive penthouse with private rooftop pool, 360-degree views, and concierge service. Only available to premium members.', 3500000, '1 Billionaire Row', 'New York', 'NY', '10019', 4, 5, 4200, 'penthouse',
+   'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&auto=format&fit=crop',
+   ARRAY['https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&auto=format&fit=crop', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&auto=format&fit=crop'],
+   ARRAY['Private Rooftop Pool', 'Wine Cellar', 'Smart Home System', 'Concierge Service', 'Panoramic Views', 'Chef Kitchen'], true),
+  
+  ('Waterfront Estate', 'Magnificent waterfront estate with private dock, infinity pool, and guest house. Early access for members only.', 5200000, '88 Harbor Point', 'Newport', 'RI', '02840', 6, 7, 8500, 'villa',
+   'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&auto=format&fit=crop',
+   ARRAY['https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&auto=format&fit=crop'],
+   ARRAY['Private Dock', 'Infinity Pool', 'Guest House', 'Wine Cellar', 'Home Theater', 'Ocean Views'], true),
+  
+  ('Modern Architectural Masterpiece', 'Award-winning modern home with floor-to-ceiling glass, smart home integration, and breathtaking city views.', 2800000, '456 Hills Dr', 'Los Angeles', 'CA', '90210', 5, 5, 5200, 'house',
+   'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&auto=format&fit=crop',
+   ARRAY['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&auto=format&fit=crop'],
+   ARRAY['Award-Winning Design', 'Floor-to-Ceiling Glass', 'Smart Home', 'City Views', 'Infinity Pool', 'Home Gym'], true);
