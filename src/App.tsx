@@ -15,6 +15,9 @@ import Membership from "./pages/Membership";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
 import Members from "./pages/Members";
+import Terms from "./pages/Terms";
+import Contact from "./pages/Contact";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +40,9 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/members" element={<Members />} />
             <Route path="/admin" element={<ProtectedRoute roles={["admin"]}><Admin /></ProtectedRoute>} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

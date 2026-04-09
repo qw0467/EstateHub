@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -291,6 +292,7 @@ const Membership = () => {
           * This is a demo payment system. In production, this would integrate with Stripe or similar payment processors.
         </p>
       </div>
+      <Footer />
     </div>
   );
 };

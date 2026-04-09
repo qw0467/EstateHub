@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import PropertyCard from "@/components/PropertyCard";
 import PropertyFilters from "@/components/PropertyFilters";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Lock } from "lucide-react";
@@ -249,6 +250,7 @@ const Properties = () => {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };

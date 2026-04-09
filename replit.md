@@ -23,7 +23,13 @@ A proof-of-concept real estate platform for property listings, user memberships,
   - `lib/` - Utility functions
   - `pages/` - Top-level page components
     - `Admin.tsx` - Admin dashboard (Users/Properties/Bookings/Memberships tabs)
+    - `Auth.tsx` - Sign-in / Sign-up with: "Forgot password?" flow (Supabase resetPasswordForEmail), T&C scroll-to-accept on sign-up
+    - `ResetPassword.tsx` - Handles Supabase password-reset email link; lets user set new password
+    - `Terms.tsx` - Full EstateHub Terms & Conditions page (14 sections, governed by English law)
+    - `Contact.tsx` - Contact Us page with form (name, email, subject dropdown, message) + office details
     - `Profile.tsx` - User profile with two tabs: My Purchases + My Listings (create/edit/delete)
+    - `Members.tsx` - Member benefits portal (7 tabs; requires monthly/yearly membership)
+    - `Footer.tsx` component - Site-wide dark footer (Explore, Support, Account columns; T&C + Contact links)
   - `App.tsx` - Root component with routing
   - `main.tsx` - Entry point
 - `supabase/migrations/` - Database migration SQL files

@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import PropertyCard from "@/components/PropertyCard";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 type Property = {
   id: string;
@@ -272,6 +273,7 @@ const Index = () => {
           </div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 };
