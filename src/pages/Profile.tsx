@@ -75,7 +75,9 @@ const formatPrice = (price: number) =>
     minimumFractionDigits: 0,
   }).format(price);
 
-const statusColor = (status: string | null) => {
+type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
+
+const statusColor = (status: string | null): BadgeVariant => {
   if (!status) return "outline";
   if (["available", "confirmed", "paid", "completed"].includes(status)) return "default";
   if (["pending"].includes(status)) return "secondary";
@@ -220,10 +222,10 @@ const Profile = () => {
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-2 items-center">
-                            <Badge variant={statusColor(b.status) as any}>
+                            <Badge variant={statusColor(b.status)}>
                               {b.status ?? "pending"}
                             </Badge>
-                            <Badge variant={statusColor(b.payment_status) as any}>
+                            <Badge variant={statusColor(b.payment_status)}>
                               Payment: {b.payment_status ?? "pending"}
                             </Badge>
                             <span className="text-sm text-muted-foreground ml-auto">
@@ -305,7 +307,7 @@ const Profile = () => {
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-2 items-center">
-                            <Badge variant={statusColor(listing.status) as any} className="capitalize">
+                            <Badge variant={statusColor(listing.status)} className="capitalize">
                               {listing.status ?? "available"}
                             </Badge>
                             <Badge variant="outline" className="capitalize">
