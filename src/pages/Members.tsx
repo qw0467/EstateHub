@@ -34,11 +34,14 @@ import {
 import {
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
 
 type PropertyItem = {
@@ -79,7 +82,7 @@ type EventItem = {
 type MarketData = {
   city: string;
   count: number;
-  avg_price: number;
+  median_price: number;
   avg_price_per_sqft: number;
 };
 
@@ -90,6 +93,15 @@ const formatQAR = (amount: number) =>
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
+
+const median = (values: number[]): number => {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid];
+};
 
 const UpgradeWall = ({ feature }: { feature: string }) => {
   const navigate = useNavigate();
@@ -167,7 +179,9 @@ const Members = () => {
   const [conciergeNotes, setConciergeNotes] = useState("");
   const [conciergeSubmitting, setConciergeSubmitting] = useState(false);
 
+  const [analysisMode, setAnalysisMode] = useState<"property" | "area">("property");
   const [analysisPropertyId, setAnalysisPropertyId] = useState("");
+  const [analysisCity, setAnalysisCity] = useState("");
   const [eventRegistering, setEventRegistering] = useState<string | null>(null);
 
   const isActive = membership?.status === "active";
@@ -205,7 +219,7 @@ const Members = () => {
       .eq("status", "available")
       .order("listed_at", { ascending: false });
 
-    const props = data || [];
+    const props = (data || []) as PropertyItem[];
     setAllProperties(props);
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -219,7 +233,7 @@ const Members = () => {
       .select("id, title, description, location, event_date, max_attendees")
       .gte("event_date", new Date().toISOString())
       .order("event_date", { ascending: true });
-    setEvents(data || []);
+    setEvents((data || []) as EventItem[]);
   };
 
   const fetchRegistrations = async () => {
@@ -228,7 +242,7 @@ const Members = () => {
       .from("event_registrations")
       .select("event_id")
       .eq("user_id", user.id);
-    setRegisteredEventIds(new Set((data || []).map((r) => r.event_id)));
+    setRegisteredEventIds(new Set((data || []).map((r: { event_id: string }) => r.event_id)));
   };
 
   const fetchConciergeBookings = async () => {
@@ -241,22 +255,25 @@ const Members = () => {
     setConciergeBookings((data as ConciergeBooking[]) || []);
   };
 
+  const cities = useMemo(() => [...new Set(allProperties.map((p) => p.city))].sort(), [allProperties]);
+
   const marketData: MarketData[] = useMemo(() => {
-    const byCity: Record<string, { total_price: number; total_price_per_sqft: number; count: number }> = {};
+    const byCity: Record<string, { prices: number[]; price_per_sqfts: number[] }> = {};
     for (const p of allProperties) {
-      if (!byCity[p.city]) byCity[p.city] = { total_price: 0, total_price_per_sqft: 0, count: 0 };
-      byCity[p.city].total_price += p.price;
-      byCity[p.city].total_price_per_sqft += p.price / p.sqft;
-      byCity[p.city].count += 1;
+      if (!byCity[p.city]) byCity[p.city] = { prices: [], price_per_sqfts: [] };
+      byCity[p.city].prices.push(p.price);
+      byCity[p.city].price_per_sqfts.push(p.price / p.sqft);
     }
     return Object.entries(byCity)
       .map(([city, v]) => ({
         city,
-        count: v.count,
-        avg_price: Math.round(v.total_price / v.count),
-        avg_price_per_sqft: Math.round(v.total_price_per_sqft / v.count),
+        count: v.prices.length,
+        median_price: Math.round(median(v.prices)),
+        avg_price_per_sqft: Math.round(
+          v.price_per_sqfts.reduce((s, x) => s + x, 0) / v.price_per_sqfts.length
+        ),
       }))
-      .sort((a, b) => b.avg_price - a.avg_price)
+      .sort((a, b) => b.median_price - a.median_price)
       .slice(0, 10);
   }, [allProperties]);
 
@@ -266,24 +283,61 @@ const Members = () => {
   );
 
   const analysisResults = useMemo(() => {
-    if (!analysisProperty) return null;
-    const pricePerSqft = analysisProperty.price / analysisProperty.sqft;
-    const estimatedMonthlyRent = analysisProperty.sqft * 18;
-    const annualRent = estimatedMonthlyRent * 12;
-    const grossYield = (annualRent / analysisProperty.price) * 100;
-    const comparables = allProperties.filter(
-      (p) =>
-        p.id !== analysisProperty.id &&
-        p.price >= analysisProperty.price * 0.85 &&
-        p.price <= analysisProperty.price * 1.15
-    );
-    const areaAvgPricePerSqft =
-      comparables.length > 0
-        ? comparables.reduce((sum, p) => sum + p.price / p.sqft, 0) / comparables.length
-        : pricePerSqft;
-    const valueVsMarket = ((pricePerSqft - areaAvgPricePerSqft) / areaAvgPricePerSqft) * 100;
-    return { pricePerSqft, estimatedMonthlyRent, annualRent, grossYield, comparables, areaAvgPricePerSqft, valueVsMarket };
-  }, [analysisProperty, allProperties]);
+    const targetCity = analysisMode === "area" ? analysisCity : analysisProperty?.city;
+    if (!targetCity && !analysisProperty) return null;
+
+    const areaProperties = allProperties.filter((p) => p.city === targetCity);
+    if (areaProperties.length === 0) return null;
+
+    const subject = analysisProperty ?? null;
+    const medianPrice = median(areaProperties.map((p) => p.price));
+    const medianPricePerSqft = median(areaProperties.map((p) => p.price / p.sqft));
+    const estimatedMonthlyRent = subject
+      ? subject.sqft * 18
+      : Math.round(median(areaProperties.map((p) => p.sqft)) * 18);
+    const priceForYield = subject?.price ?? medianPrice;
+    const grossYield = ((estimatedMonthlyRent * 12) / priceForYield) * 100;
+
+    const comparables = subject
+      ? allProperties.filter(
+          (p) =>
+            p.id !== subject.id &&
+            p.price >= subject.price * 0.85 &&
+            p.price <= subject.price * 1.15
+        )
+      : [];
+
+    const subjectPricePerSqft = subject ? subject.price / subject.sqft : null;
+    const valueVsMarket = subjectPricePerSqft
+      ? ((subjectPricePerSqft - medianPricePerSqft) / medianPricePerSqft) * 100
+      : null;
+
+    const priceHistory = areaProperties
+      .filter((p) => p.listed_at)
+      .sort((a, b) => new Date(a.listed_at!).getTime() - new Date(b.listed_at!).getTime())
+      .map((p) => ({
+        date: new Date(p.listed_at!).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "2-digit",
+        }),
+        price_per_sqft: Math.round(p.price / p.sqft),
+        listed_at: p.listed_at,
+      }));
+
+    return {
+      targetCity,
+      areaProperties,
+      medianPrice,
+      medianPricePerSqft,
+      estimatedMonthlyRent,
+      grossYield,
+      comparables,
+      subjectPricePerSqft,
+      valueVsMarket,
+      priceHistory,
+    };
+  }, [analysisMode, analysisProperty, analysisCity, allProperties]);
 
   const handleSupportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -372,9 +426,10 @@ const Members = () => {
   }
 
   const tierLabel = membership?.tier === "yearly" ? "Yearly Premium" : "Monthly Premium";
-  const tierColor = membership?.tier === "yearly"
-    ? "bg-gradient-to-r from-[hsl(var(--real-estate-accent))] to-amber-400 text-black"
-    : "bg-gradient-to-r from-[hsl(var(--real-estate-primary))] to-[hsl(var(--real-estate-secondary))] text-white";
+  const tierColor =
+    membership?.tier === "yearly"
+      ? "bg-gradient-to-r from-[hsl(var(--real-estate-accent))] to-amber-400 text-black"
+      : "bg-gradient-to-r from-[hsl(var(--real-estate-primary))] to-[hsl(var(--real-estate-secondary))] text-white";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-accent">
@@ -383,15 +438,13 @@ const Members = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[hsl(var(--real-estate-primary))] to-[hsl(var(--real-estate-secondary))] flex items-center justify-center">
-                  <Crown className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold">Member Portal</h1>
-                  <p className="text-muted-foreground text-sm">Your exclusive benefits & tools</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[hsl(var(--real-estate-primary))] to-[hsl(var(--real-estate-secondary))] flex items-center justify-center">
+                <Crown className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">Member Portal</h1>
+                <p className="text-muted-foreground text-sm">Your exclusive benefits &amp; tools</p>
               </div>
             </div>
             <Badge className={`${tierColor} border-0 px-4 py-2 text-sm font-semibold`}>
@@ -402,7 +455,12 @@ const Members = () => {
           {membership?.end_date && (
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              Membership valid until {new Date(membership.end_date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+              Membership valid until{" "}
+              {new Date(membership.end_date).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
             </p>
           )}
         </div>
@@ -441,6 +499,7 @@ const Members = () => {
             </TabsList>
           </div>
 
+          {/* NEW THIS WEEK */}
           <TabsContent value="new-listings" className="space-y-4">
             <div>
               <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -448,7 +507,7 @@ const Members = () => {
                 New This Week
               </h2>
               <p className="text-muted-foreground text-sm mt-1">
-                Early access to listings added in the past 7 days — before they appear on the public search.
+                Early access to listings added in the past 7 days — visible to members before they appear on the public search.
               </p>
             </div>
             {newListings.length === 0 ? (
@@ -456,7 +515,9 @@ const Members = () => {
                 <CardContent className="py-16 text-center">
                   <Star className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40" />
                   <p className="text-muted-foreground font-medium">No new listings this week</p>
-                  <p className="text-sm text-muted-foreground mt-1">Check back soon — new properties are added regularly.</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Check back soon — new properties are added regularly.
+                  </p>
                   <Button variant="outline" className="mt-4" onClick={() => navigate("/properties")}>
                     Browse All Properties
                   </Button>
@@ -476,6 +537,7 @@ const Members = () => {
             )}
           </TabsContent>
 
+          {/* MARKET INSIGHTS */}
           <TabsContent value="insights" className="space-y-6">
             <div>
               <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -483,7 +545,7 @@ const Members = () => {
                 Market Insights
               </h2>
               <p className="text-muted-foreground text-sm mt-1">
-                Area-level price trends based on current listings — median price, price-per-sqft, and listing volume by city.
+                Area-level price trends — median price, price-per-sqft, and listing volume by city.
               </p>
             </div>
 
@@ -496,11 +558,9 @@ const Members = () => {
               </Card>
               <Card className="border-0 shadow-sm">
                 <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground">Avg. Listing Price</p>
+                  <p className="text-sm text-muted-foreground">Overall Median Price</p>
                   <p className="text-3xl font-bold mt-1">
-                    {allProperties.length > 0
-                      ? formatQAR(allProperties.reduce((s, p) => s + p.price, 0) / allProperties.length)
-                      : "—"}
+                    {allProperties.length > 0 ? formatQAR(median(allProperties.map((p) => p.price))) : "—"}
                   </p>
                 </CardContent>
               </Card>
@@ -516,7 +576,8 @@ const Members = () => {
               <>
                 <Card className="border-0 shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-base">Average Listing Price by City</CardTitle>
+                    <CardTitle className="text-base">Median Listing Price by City</CardTitle>
+                    <CardDescription className="text-xs">True statistical median — not skewed by outliers</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
@@ -534,10 +595,14 @@ const Members = () => {
                           tickFormatter={(v) => `${(v / 1_000_000).toFixed(1)}M`}
                         />
                         <Tooltip
-                          formatter={(v: number) => [formatQAR(v), "Avg Price"]}
-                          contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                          formatter={(v: number) => [formatQAR(v), "Median Price"]}
+                          contentStyle={{
+                            background: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: 8,
+                          }}
                         />
-                        <Bar dataKey="avg_price" fill="hsl(var(--real-estate-primary))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="median_price" fill="hsl(var(--real-estate-primary))" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </CardContent>
@@ -558,10 +623,17 @@ const Members = () => {
                           textAnchor="end"
                           interval={0}
                         />
-                        <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => `QAR ${v}`} />
+                        <YAxis
+                          tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                          tickFormatter={(v) => `QAR ${v}`}
+                        />
                         <Tooltip
-                          formatter={(v: number) => [`QAR ${v.toLocaleString()}`, "Avg per sqft"]}
-                          contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                          formatter={(v: number) => [`QAR ${v.toLocaleString()}`, "Avg/sqft"]}
+                          contentStyle={{
+                            background: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: 8,
+                          }}
                         />
                         <Bar dataKey="avg_price_per_sqft" fill="hsl(var(--real-estate-secondary))" radius={[4, 4, 0, 0]} />
                       </BarChart>
@@ -579,7 +651,7 @@ const Members = () => {
                         <tr className="border-b border-border bg-muted/40">
                           <th className="px-4 py-3 text-left font-medium text-muted-foreground">City</th>
                           <th className="px-4 py-3 text-right font-medium text-muted-foreground">Listings</th>
-                          <th className="px-4 py-3 text-right font-medium text-muted-foreground">Avg Price</th>
+                          <th className="px-4 py-3 text-right font-medium text-muted-foreground">Median Price</th>
                           <th className="px-4 py-3 text-right font-medium text-muted-foreground">Avg / sqft</th>
                         </tr>
                       </thead>
@@ -588,8 +660,10 @@ const Members = () => {
                           <tr key={row.city} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                             <td className="px-4 py-3 font-medium">{row.city}</td>
                             <td className="px-4 py-3 text-right text-muted-foreground">{row.count}</td>
-                            <td className="px-4 py-3 text-right">{formatQAR(row.avg_price)}</td>
-                            <td className="px-4 py-3 text-right text-muted-foreground">QAR {row.avg_price_per_sqft.toLocaleString()}</td>
+                            <td className="px-4 py-3 text-right">{formatQAR(row.median_price)}</td>
+                            <td className="px-4 py-3 text-right text-muted-foreground">
+                              QAR {row.avg_price_per_sqft.toLocaleString()}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -599,11 +673,14 @@ const Members = () => {
               </>
             ) : (
               <Card className="border-0 shadow-sm">
-                <CardContent className="py-12 text-center text-muted-foreground">No market data available yet.</CardContent>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  No market data available yet.
+                </CardContent>
               </Card>
             )}
           </TabsContent>
 
+          {/* AGENT SUPPORT */}
           <TabsContent value="support" className="space-y-4">
             <div>
               <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -659,6 +736,7 @@ const Members = () => {
             </Card>
           </TabsContent>
 
+          {/* VIP PREVIEWS */}
           <TabsContent value="vip" className="space-y-4">
             {!isYearly ? (
               <UpgradeWall feature="VIP property previews" />
@@ -678,7 +756,9 @@ const Members = () => {
                     <CardContent className="py-16 text-center">
                       <Eye className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40" />
                       <p className="text-muted-foreground font-medium">No VIP previews available right now</p>
-                      <p className="text-sm text-muted-foreground mt-1">New VIP properties are added periodically — check back soon.</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        New VIP properties are added periodically — check back soon.
+                      </p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -698,6 +778,7 @@ const Members = () => {
             )}
           </TabsContent>
 
+          {/* CONCIERGE */}
           <TabsContent value="concierge" className="space-y-6">
             {!isYearly ? (
               <UpgradeWall feature="Personal concierge booking" />
@@ -736,7 +817,7 @@ const Members = () => {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="concierge-date">Preferred Date & Time</Label>
+                          <Label htmlFor="concierge-date">Preferred Date &amp; Time</Label>
                           <Input
                             id="concierge-date"
                             type="datetime-local"
@@ -764,7 +845,9 @@ const Members = () => {
                   </Card>
 
                   <div className="space-y-3">
-                    <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Your Past Sessions</h3>
+                    <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+                      Your Past Sessions
+                    </h3>
                     {conciergeBookings.length === 0 ? (
                       <Card className="border-0 shadow-sm">
                         <CardContent className="py-10 text-center text-muted-foreground text-sm">
@@ -783,14 +866,25 @@ const Members = () => {
                                 <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                                   <CalendarDays className="h-3 w-3" />
                                   {new Date(b.scheduled_at).toLocaleString("en-GB", {
-                                    day: "numeric", month: "short", year: "numeric",
-                                    hour: "2-digit", minute: "2-digit",
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
                                   })}
                                 </p>
-                                {b.notes && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{b.notes}</p>}
+                                {b.notes && (
+                                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{b.notes}</p>
+                                )}
                               </div>
                               <Badge
-                                variant={b.status === "confirmed" ? "default" : b.status === "cancelled" ? "destructive" : "secondary"}
+                                variant={
+                                  b.status === "confirmed"
+                                    ? "default"
+                                    : b.status === "cancelled"
+                                    ? "destructive"
+                                    : "secondary"
+                                }
                                 className="capitalize shrink-0 text-xs"
                               >
                                 {b.status ?? "pending"}
@@ -806,6 +900,7 @@ const Members = () => {
             )}
           </TabsContent>
 
+          {/* INVESTMENT ANALYSIS */}
           <TabsContent value="analysis" className="space-y-6">
             {!isYearly ? (
               <UpgradeWall feature="Investment analysis tools" />
@@ -817,78 +912,214 @@ const Members = () => {
                     Investment Analysis
                   </h2>
                   <p className="text-muted-foreground text-sm mt-1">
-                    Select a property to see estimated rental yield, comparable sales, and price-per-sqft intelligence.
+                    Analyse a specific property or a full area — estimated yield, comparable sales, and area price history.
                   </p>
                 </div>
 
-                <Card className="border-0 shadow-sm max-w-sm">
-                  <CardContent className="pt-6">
-                    <Label>Select a Property</Label>
-                    <Select value={analysisPropertyId} onValueChange={setAnalysisPropertyId}>
-                      <SelectTrigger className="mt-2">
-                        <SelectValue placeholder="Choose a property…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allProperties.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.title} — {p.city}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="pt-6 space-y-4">
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={analysisMode === "property" ? "default" : "outline"}
+                        onClick={() => { setAnalysisMode("property"); setAnalysisCity(""); }}
+                      >
+                        By Property
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={analysisMode === "area" ? "default" : "outline"}
+                        onClick={() => { setAnalysisMode("area"); setAnalysisPropertyId(""); }}
+                      >
+                        By Area / City
+                      </Button>
+                    </div>
+
+                    {analysisMode === "property" ? (
+                      <div className="max-w-sm">
+                        <Label>Select a Property</Label>
+                        <Select value={analysisPropertyId} onValueChange={setAnalysisPropertyId}>
+                          <SelectTrigger className="mt-2">
+                            <SelectValue placeholder="Choose a property…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allProperties.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.title} — {p.city}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : (
+                      <div className="max-w-sm">
+                        <Label>Select a City / Area</Label>
+                        <Select value={analysisCity} onValueChange={setAnalysisCity}>
+                          <SelectTrigger className="mt-2">
+                            <SelectValue placeholder="Choose a city…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {cities.map((city) => (
+                              <SelectItem key={city} value={city}>{city}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
-                {analysisProperty && analysisResults && (
+                {analysisResults ? (
                   <div className="space-y-4">
-                    <Card className="border-0 shadow-sm">
-                      <CardHeader>
-                        <CardTitle className="text-base">{analysisProperty.title}</CardTitle>
-                        <CardDescription className="flex items-center gap-1">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {analysisProperty.address}, {analysisProperty.city}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                          <div className="bg-muted/40 rounded-lg p-4 text-center">
-                            <p className="text-xs text-muted-foreground mb-1">Listing Price</p>
-                            <p className="text-lg font-bold">{formatQAR(analysisProperty.price)}</p>
+                    {analysisProperty && (
+                      <Card className="border-0 shadow-sm">
+                        <CardHeader>
+                          <CardTitle className="text-base">{analysisProperty.title}</CardTitle>
+                          <CardDescription className="flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {analysisProperty.address}, {analysisProperty.city}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="bg-muted/40 rounded-lg p-4 text-center">
+                              <p className="text-xs text-muted-foreground mb-1">Listing Price</p>
+                              <p className="text-lg font-bold">{formatQAR(analysisProperty.price)}</p>
+                            </div>
+                            <div className="bg-muted/40 rounded-lg p-4 text-center">
+                              <p className="text-xs text-muted-foreground mb-1">Price / sqft</p>
+                              <p className="text-lg font-bold">
+                                QAR {Math.round(analysisResults.subjectPricePerSqft!).toLocaleString()}
+                              </p>
+                            </div>
+                            <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 text-center">
+                              <p className="text-xs text-muted-foreground mb-1">Est. Gross Yield</p>
+                              <p className="text-lg font-bold text-green-700 dark:text-green-400">
+                                {analysisResults.grossYield.toFixed(2)}%
+                              </p>
+                            </div>
+                            <div className="bg-muted/40 rounded-lg p-4 text-center">
+                              <p className="text-xs text-muted-foreground mb-1">Est. Monthly Rent</p>
+                              <p className="text-lg font-bold">{formatQAR(analysisResults.estimatedMonthlyRent)}</p>
+                            </div>
                           </div>
-                          <div className="bg-muted/40 rounded-lg p-4 text-center">
-                            <p className="text-xs text-muted-foreground mb-1">Price per sqft</p>
-                            <p className="text-lg font-bold">QAR {Math.round(analysisResults.pricePerSqft).toLocaleString()}</p>
-                          </div>
-                          <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 text-center">
-                            <p className="text-xs text-muted-foreground mb-1">Est. Gross Yield</p>
-                            <p className="text-lg font-bold text-green-700 dark:text-green-400">
-                              {analysisResults.grossYield.toFixed(2)}%
-                            </p>
-                          </div>
-                          <div className="bg-muted/40 rounded-lg p-4 text-center">
-                            <p className="text-xs text-muted-foreground mb-1">Est. Monthly Rent</p>
-                            <p className="text-lg font-bold">{formatQAR(analysisResults.estimatedMonthlyRent)}</p>
-                          </div>
-                        </div>
+                          {analysisResults.valueVsMarket !== null && (
+                            <div className="mt-4 p-4 rounded-lg border border-border/60">
+                              <p className="text-sm font-medium mb-1">Market Position vs {analysisResults.targetCity}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Price/sqft is{" "}
+                                <span
+                                  className={
+                                    analysisResults.valueVsMarket > 0
+                                      ? "text-red-600 font-medium"
+                                      : "text-green-600 font-medium"
+                                  }
+                                >
+                                  {analysisResults.valueVsMarket > 0 ? "+" : ""}
+                                  {analysisResults.valueVsMarket.toFixed(1)}%
+                                </span>{" "}
+                                vs area median (QAR{" "}
+                                {Math.round(analysisResults.medianPricePerSqft).toLocaleString()}/sqft).
+                              </p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
 
-                        <div className="mt-4 p-4 rounded-lg border border-border/60">
-                          <p className="text-sm font-medium mb-2">Market Position</p>
-                          <p className="text-sm text-muted-foreground">
-                            Price per sqft is{" "}
-                            <span className={analysisResults.valueVsMarket > 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-                              {analysisResults.valueVsMarket > 0 ? "+" : ""}{analysisResults.valueVsMarket.toFixed(1)}%
-                            </span>{" "}
-                            vs {analysisResults.comparables.length > 0 ? `${analysisResults.comparables.length} comparable properties` : "market average"}.{" "}
-                            Area average: QAR {Math.round(analysisResults.areaAvgPricePerSqft).toLocaleString()}/sqft.
-                          </p>
-                        </div>
+                    {analysisMode === "area" && (
+                      <Card className="border-0 shadow-sm">
+                        <CardHeader>
+                          <CardTitle className="text-base">{analysisResults.targetCity} Area Overview</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid sm:grid-cols-4 gap-4">
+                            <div className="bg-muted/40 rounded-lg p-4 text-center">
+                              <p className="text-xs text-muted-foreground mb-1">Listings</p>
+                              <p className="text-lg font-bold">{analysisResults.areaProperties.length}</p>
+                            </div>
+                            <div className="bg-muted/40 rounded-lg p-4 text-center">
+                              <p className="text-xs text-muted-foreground mb-1">Median Price</p>
+                              <p className="text-lg font-bold">{formatQAR(analysisResults.medianPrice)}</p>
+                            </div>
+                            <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 text-center">
+                              <p className="text-xs text-muted-foreground mb-1">Est. Area Yield</p>
+                              <p className="text-lg font-bold text-green-700 dark:text-green-400">
+                                {analysisResults.grossYield.toFixed(2)}%
+                              </p>
+                            </div>
+                            <div className="bg-muted/40 rounded-lg p-4 text-center">
+                              <p className="text-xs text-muted-foreground mb-1">Median / sqft</p>
+                              <p className="text-lg font-bold">
+                                QAR {Math.round(analysisResults.medianPricePerSqft).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
 
-                        <div className="mt-4 text-xs text-muted-foreground bg-muted/30 rounded p-3">
-                          Estimates are based on current listing data and a market rental rate of QAR 18/sqft/month. 
-                          This is indicative only and not financial advice.
-                        </div>
-                      </CardContent>
-                    </Card>
+                    {analysisResults.priceHistory.length >= 2 && (
+                      <Card className="border-0 shadow-sm">
+                        <CardHeader>
+                          <CardTitle className="text-base">
+                            Price / sqft History — {analysisResults.targetCity}
+                          </CardTitle>
+                          <CardDescription className="text-xs">
+                            Listing prices over time for properties in this area, ordered by listing date
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <ResponsiveContainer width="100%" height={260}>
+                            <LineChart
+                              data={analysisResults.priceHistory}
+                              margin={{ top: 4, right: 16, bottom: 40, left: 16 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                              <XAxis
+                                dataKey="date"
+                                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                                angle={-35}
+                                textAnchor="end"
+                                interval={0}
+                              />
+                              <YAxis
+                                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                                tickFormatter={(v) => `QAR ${v}`}
+                              />
+                              <Tooltip
+                                formatter={(v: number) => [`QAR ${v.toLocaleString()}`, "Price/sqft"]}
+                                contentStyle={{
+                                  background: "hsl(var(--card))",
+                                  border: "1px solid hsl(var(--border))",
+                                  borderRadius: 8,
+                                }}
+                              />
+                              {analysisResults.subjectPricePerSqft && (
+                                <ReferenceLine
+                                  y={Math.round(analysisResults.subjectPricePerSqft)}
+                                  stroke="hsl(var(--real-estate-accent))"
+                                  strokeDasharray="4 4"
+                                  label={{
+                                    value: "This property",
+                                    fill: "hsl(var(--real-estate-accent))",
+                                    fontSize: 10,
+                                  }}
+                                />
+                              )}
+                              <Line
+                                type="monotone"
+                                dataKey="price_per_sqft"
+                                stroke="hsl(var(--real-estate-primary))"
+                                strokeWidth={2}
+                                dot={{ r: 3 }}
+                                activeDot={{ r: 5 }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                      </Card>
+                    )}
 
                     {analysisResults.comparables.length > 0 && (
                       <div>
@@ -902,13 +1133,18 @@ const Members = () => {
                         </div>
                       </div>
                     )}
-                  </div>
-                )}
 
-                {!analysisProperty && (
+                    <div className="text-xs text-muted-foreground bg-muted/30 rounded p-3">
+                      Estimates use a market rental rate of QAR 18/sqft/month and are computed from current listing data only.
+                      This is indicative only and not financial advice.
+                    </div>
+                  </div>
+                ) : (
                   <Card className="border-0 shadow-sm">
                     <CardContent className="py-12 text-center text-muted-foreground text-sm">
-                      Select a property above to see its investment analysis.
+                      {analysisMode === "property"
+                        ? "Select a property above to see its investment analysis."
+                        : "Select a city above to see area-level investment analysis."}
                     </CardContent>
                   </Card>
                 )}
@@ -916,6 +1152,7 @@ const Members = () => {
             )}
           </TabsContent>
 
+          {/* EVENTS */}
           <TabsContent value="events" className="space-y-4">
             {!isYearly ? (
               <UpgradeWall feature="Exclusive networking events" />
@@ -936,7 +1173,9 @@ const Members = () => {
                     <CardContent className="py-16 text-center">
                       <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40" />
                       <p className="text-muted-foreground font-medium">No upcoming events right now</p>
-                      <p className="text-sm text-muted-foreground mt-1">New events are announced regularly — check back soon.</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        New events are announced regularly — check back soon.
+                      </p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -947,37 +1186,40 @@ const Members = () => {
                         <Card key={event.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
                           <CardContent className="p-6">
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="flex items-start gap-3">
-                                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[hsl(var(--real-estate-primary))]/10 to-[hsl(var(--real-estate-secondary))]/10 flex items-center justify-center shrink-0">
-                                    <CalendarDays className="h-6 w-6 text-[hsl(var(--real-estate-primary))]" />
-                                  </div>
-                                  <div>
-                                    <h3 className="font-semibold">{event.title}</h3>
-                                    <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1">
-                                      <CalendarDays className="h-3.5 w-3.5" />
-                                      {new Date(event.event_date).toLocaleDateString("en-GB", {
-                                        weekday: "long", day: "numeric", month: "long", year: "numeric",
-                                      })}
+                              <div className="flex gap-3 flex-1">
+                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[hsl(var(--real-estate-primary))]/10 to-[hsl(var(--real-estate-secondary))]/10 flex items-center justify-center shrink-0">
+                                  <CalendarDays className="h-6 w-6 text-[hsl(var(--real-estate-primary))]" />
+                                </div>
+                                <div>
+                                  <h3 className="font-semibold">{event.title}</h3>
+                                  <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1">
+                                    <CalendarDays className="h-3.5 w-3.5" />
+                                    {new Date(event.event_date).toLocaleDateString("en-GB", {
+                                      weekday: "long",
+                                      day: "numeric",
+                                      month: "long",
+                                      year: "numeric",
+                                    })}
+                                  </p>
+                                  {event.location && (
+                                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                      <MapPin className="h-3.5 w-3.5" />
+                                      {event.location}
                                     </p>
-                                    {event.location && (
-                                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                        <MapPin className="h-3.5 w-3.5" />
-                                        {event.location}
-                                      </p>
-                                    )}
-                                    {event.description && (
-                                      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{event.description}</p>
-                                    )}
-                                    {event.max_attendees && (
-                                      <p className="text-xs text-muted-foreground mt-2">
-                                        Limited to {event.max_attendees} attendees
-                                      </p>
-                                    )}
-                                  </div>
+                                  )}
+                                  {event.description && (
+                                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                                      {event.description}
+                                    </p>
+                                  )}
+                                  {event.max_attendees && (
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      Limited to {event.max_attendees} attendees
+                                    </p>
+                                  )}
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 shrink-0">
                                 {isRegistered && (
                                   <Badge variant="default" className="text-xs flex items-center gap-1">
                                     <CheckCircle2 className="h-3 w-3" />

@@ -10,7 +10,67 @@ UPDATE public.properties SET listed_at = created_at WHERE listed_at IS NULL;
 ALTER TABLE public.bookings
 ADD COLUMN IF NOT EXISTS is_priority boolean DEFAULT false;
 
--- Create concierge_bookings table (yearly-tier feature)
+-- -----------------------------------------------------------------------
+-- Early-access listing visibility enforcement
+-- Replace the open "anyone can view" policy with tier-aware policies so
+-- that listings added within the past 7 days are only visible to members.
+-- -----------------------------------------------------------------------
+DROP POLICY IF EXISTS "Anyone can view non-exclusive available properties" ON public.properties;
+
+-- Public users and free-tier members see non-exclusive, available properties
+-- that were listed MORE THAN 7 days ago (no early access).
+CREATE POLICY "Public can view non-exclusive available properties"
+  ON public.properties FOR SELECT
+  USING (
+    (
+      status = 'available'
+      AND is_exclusive = false
+      AND (listed_at IS NULL OR listed_at <= now() - interval '7 days')
+    )
+    OR auth.uid() = agent_id
+    OR auth.uid() = seller_id
+  );
+
+-- Monthly and yearly members get unrestricted early access to all non-exclusive
+-- available properties (including those listed within the past 7 days).
+CREATE POLICY "Members can view all non-exclusive available properties"
+  ON public.properties FOR SELECT
+  USING (
+    status = 'available'
+    AND is_exclusive = false
+    AND EXISTS (
+      SELECT 1 FROM public.memberships
+      WHERE user_id = auth.uid()
+      AND tier IN ('monthly', 'yearly')
+      AND status = 'active'
+      AND (end_date IS NULL OR end_date > now())
+    )
+  );
+
+-- -----------------------------------------------------------------------
+-- Helper: has_yearly_membership() — used in yearly-only RLS policies
+-- -----------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.has_yearly_membership()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.memberships
+    WHERE user_id = auth.uid()
+    AND tier = 'yearly'
+    AND status = 'active'
+    AND (end_date IS NULL OR end_date > now())
+  )
+$$;
+
+-- -----------------------------------------------------------------------
+-- concierge_bookings table (yearly-tier feature)
+-- INSERT is enforced at the DB level: only yearly members may book.
+-- -----------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.concierge_bookings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
@@ -24,17 +84,17 @@ CREATE TABLE IF NOT EXISTS public.concierge_bookings (
 
 ALTER TABLE public.concierge_bookings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own concierge bookings"
+CREATE POLICY "Yearly members can view their own concierge bookings"
   ON public.concierge_bookings FOR SELECT
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id AND public.has_yearly_membership());
 
-CREATE POLICY "Users can insert their own concierge bookings"
+CREATE POLICY "Yearly members can insert their own concierge bookings"
   ON public.concierge_bookings FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (auth.uid() = user_id AND public.has_yearly_membership());
 
-CREATE POLICY "Users can update their own concierge bookings"
+CREATE POLICY "Yearly members can update their own concierge bookings"
   ON public.concierge_bookings FOR UPDATE
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id AND public.has_yearly_membership());
 
 CREATE POLICY "Admins can manage all concierge bookings"
   ON public.concierge_bookings FOR ALL
@@ -44,7 +104,9 @@ CREATE TRIGGER update_concierge_bookings_updated_at
   BEFORE UPDATE ON public.concierge_bookings
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
--- Create support_requests table (monthly+ feature)
+-- -----------------------------------------------------------------------
+-- support_requests table (monthly+ feature)
+-- -----------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.support_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
@@ -57,19 +119,21 @@ CREATE TABLE IF NOT EXISTS public.support_requests (
 
 ALTER TABLE public.support_requests ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own support requests"
+CREATE POLICY "Members can view their own support requests"
   ON public.support_requests FOR SELECT
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id AND public.has_active_membership(auth.uid()));
 
-CREATE POLICY "Users can insert their own support requests"
+CREATE POLICY "Members can insert their own support requests"
   ON public.support_requests FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (auth.uid() = user_id AND public.has_active_membership(auth.uid()));
 
 CREATE POLICY "Admins can manage all support requests"
   ON public.support_requests FOR ALL
   USING (public.is_admin());
 
--- Create events table (yearly-tier feature)
+-- -----------------------------------------------------------------------
+-- events table (yearly-tier only visibility)
+-- -----------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title text NOT NULL,
@@ -83,15 +147,18 @@ CREATE TABLE IF NOT EXISTS public.events (
 
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Authenticated users can view events"
+-- Only yearly members (and admins) can see events
+CREATE POLICY "Yearly members can view events"
   ON public.events FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+  USING (public.has_yearly_membership());
 
 CREATE POLICY "Admins can manage events"
   ON public.events FOR ALL
   USING (public.is_admin());
 
--- Create event_registrations table
+-- -----------------------------------------------------------------------
+-- event_registrations table (yearly-tier only)
+-- -----------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.event_registrations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id uuid REFERENCES public.events(id) ON DELETE CASCADE NOT NULL,
@@ -102,22 +169,26 @@ CREATE TABLE IF NOT EXISTS public.event_registrations (
 
 ALTER TABLE public.event_registrations ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own event registrations"
+CREATE POLICY "Yearly members can view their own event registrations"
   ON public.event_registrations FOR SELECT
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id AND public.has_yearly_membership());
 
-CREATE POLICY "Users can insert their own event registrations"
+CREATE POLICY "Yearly members can insert their own event registrations"
   ON public.event_registrations FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (auth.uid() = user_id AND public.has_yearly_membership());
 
-CREATE POLICY "Users can delete their own event registrations"
+CREATE POLICY "Yearly members can delete their own event registrations"
   ON public.event_registrations FOR DELETE
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id AND public.has_yearly_membership());
 
--- Flag some existing exclusive properties as VIP preview
+-- -----------------------------------------------------------------------
+-- Flag existing exclusive properties as VIP preview
+-- -----------------------------------------------------------------------
 UPDATE public.properties SET is_vip_preview = true WHERE is_exclusive = true;
 
+-- -----------------------------------------------------------------------
 -- Sample networking events
+-- -----------------------------------------------------------------------
 INSERT INTO public.events (title, description, location, event_date, max_attendees)
 VALUES
   (
