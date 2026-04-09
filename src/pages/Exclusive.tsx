@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import PropertyCard from "@/components/PropertyCard";
+import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Lock, Crown, Sparkles, LogOut } from "lucide-react";
+import { Lock, Crown, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type Property = {
@@ -79,43 +80,13 @@ const Exclusive = () => {
     setLoading(false);
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
-
   const hasPremiumAccess = membership && 
     (membership.tier === "monthly" || membership.tier === "yearly") && 
     membership.status === "active";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-accent">
-      {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-[hsl(var(--real-estate-primary))] to-[hsl(var(--real-estate-secondary))] bg-clip-text text-transparent">
-              EstateHub
-            </Link>
-            <nav className="hidden md:flex gap-6">
-              <Link to="/properties" className="text-sm font-medium hover:text-primary transition-colors">All Properties</Link>
-              <Link to="/exclusive" className="text-sm font-medium text-primary">Exclusive</Link>
-              <Link to="/membership" className="text-sm font-medium hover:text-primary transition-colors">Membership</Link>
-            </nav>
-            {user && (
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-muted-foreground hidden sm:inline">
-                  {user.email}
-                </span>
-                <Button variant="outline" size="sm" onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       <div className="container mx-auto px-4 py-8">
         {/* Hero Section */}

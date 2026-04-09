@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -114,20 +115,7 @@ const Booking = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-accent">
-      {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-[hsl(var(--real-estate-primary))] to-[hsl(var(--real-estate-secondary))] bg-clip-text text-transparent">
-              EstateHub
-            </Link>
-            <Button variant="ghost" onClick={() => navigate(-1)}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">

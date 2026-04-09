@@ -205,7 +205,9 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          is_suspended: boolean
           phone: string | null
+          role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
         Insert: {
@@ -213,7 +215,9 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
+          is_suspended?: boolean
           phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
         Update: {
@@ -221,7 +225,9 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_suspended?: boolean
           phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
         Relationships: []
@@ -308,13 +314,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_current_user_role: { Args: Record<PropertyKey, never>; Returns: Database["public"]["Enums"]["user_role"] }
       has_active_membership: { Args: { _user_id: string }; Returns: boolean }
+      is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
     }
     Enums: {
       membership_status: "active" | "expired" | "cancelled"
       membership_tier: "free" | "monthly" | "yearly"
       property_status: "available" | "pending" | "sold"
       property_type: "house" | "apartment" | "condo" | "villa" | "penthouse"
+      user_role: "free" | "seller" | "member" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -446,6 +455,7 @@ export const Constants = {
       membership_tier: ["free", "monthly", "yearly"],
       property_status: ["available", "pending", "sold"],
       property_type: ["house", "apartment", "condo", "villa", "penthouse"],
+      user_role: ["free", "seller", "member", "admin"],
     },
   },
 } as const

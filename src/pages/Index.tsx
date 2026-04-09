@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import PropertyCard from "@/components/PropertyCard";
+import Navbar from "@/components/Navbar";
 
 type Property = {
   id: string;
@@ -79,6 +80,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen">
+      <Navbar />
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[hsl(var(--real-estate-primary))] via-[hsl(var(--primary))] to-[hsl(var(--real-estate-secondary))] text-white">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTZ2LTZoNnYxMnptNiAwdi02aDZ2Nmg2djZoLTZ2Nmg2djZoLTZ2Nmg2djZoLTZ2Nmg2djZoLTZ2Nmg2djZoLTZ2Nmg2djZoLTZ2Nmg2djZoLTZ2Nmg2djZoLTZ2Nmg2djZoLTYiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-10"></div>
