@@ -10,8 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import {
   Crown,
   Star,
@@ -30,6 +33,8 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import {
   BarChart,
@@ -175,6 +180,7 @@ const Members = () => {
   const [supportSubmitting, setSupportSubmitting] = useState(false);
 
   const [conciergePropertyId, setConciergePropertyId] = useState("");
+  const [conciergePickerOpen, setConciergePickerOpen] = useState(false);
   const [conciergeDate, setConciergeDate] = useState("");
   const [conciergeNotes, setConciergeNotes] = useState("");
   const [conciergeSubmitting, setConciergeSubmitting] = useState(false);
@@ -803,18 +809,48 @@ const Members = () => {
                       <form onSubmit={handleConciergeSubmit} className="space-y-4">
                         <div className="space-y-2">
                           <Label>Property (optional)</Label>
-                          <Select value={conciergePropertyId} onValueChange={setConciergePropertyId}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a property…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {allProperties.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  {p.title} — {p.city}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Popover open={conciergePickerOpen} onOpenChange={setConciergePickerOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={conciergePickerOpen}
+                                className="w-full justify-between font-normal"
+                              >
+                                {conciergePropertyId
+                                  ? allProperties.find((p) => p.id === conciergePropertyId)
+                                      ? `${allProperties.find((p) => p.id === conciergePropertyId)!.title} — ${allProperties.find((p) => p.id === conciergePropertyId)!.city}`
+                                      : "Select a property…"
+                                  : "Select a property…"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-full p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Search properties by name or city…" />
+                                <CommandList>
+                                  <CommandEmpty>No properties found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {allProperties.map((p) => (
+                                      <CommandItem
+                                        key={p.id}
+                                        value={`${p.title} ${p.city}`}
+                                        onSelect={() => {
+                                          setConciergePropertyId(p.id === conciergePropertyId ? "" : p.id);
+                                          setConciergePickerOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn("mr-2 h-4 w-4", conciergePropertyId === p.id ? "opacity-100" : "opacity-0")}
+                                        />
+                                        <span className="truncate">{p.title} — {p.city}</span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="concierge-date">Preferred Date &amp; Time</Label>

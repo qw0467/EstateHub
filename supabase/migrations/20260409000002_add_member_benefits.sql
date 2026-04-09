@@ -11,43 +11,6 @@ ALTER TABLE public.bookings
 ADD COLUMN IF NOT EXISTS is_priority boolean DEFAULT false;
 
 -- -----------------------------------------------------------------------
--- Early-access listing visibility enforcement
--- Replace the open "anyone can view" policy with tier-aware policies so
--- that listings added within the past 7 days are only visible to members.
--- -----------------------------------------------------------------------
-DROP POLICY IF EXISTS "Anyone can view non-exclusive available properties" ON public.properties;
-
--- Public users and free-tier members see non-exclusive, available properties
--- that were listed MORE THAN 7 days ago (no early access).
-CREATE POLICY "Public can view non-exclusive available properties"
-  ON public.properties FOR SELECT
-  USING (
-    (
-      status = 'available'
-      AND is_exclusive = false
-      AND (listed_at IS NULL OR listed_at <= now() - interval '7 days')
-    )
-    OR auth.uid() = agent_id
-    OR auth.uid() = seller_id
-  );
-
--- Monthly and yearly members get unrestricted early access to all non-exclusive
--- available properties (including those listed within the past 7 days).
-CREATE POLICY "Members can view all non-exclusive available properties"
-  ON public.properties FOR SELECT
-  USING (
-    status = 'available'
-    AND is_exclusive = false
-    AND EXISTS (
-      SELECT 1 FROM public.memberships
-      WHERE user_id = auth.uid()
-      AND tier IN ('monthly', 'yearly')
-      AND status = 'active'
-      AND (end_date IS NULL OR end_date > now())
-    )
-  );
-
--- -----------------------------------------------------------------------
 -- Helper: has_yearly_membership() — used in yearly-only RLS policies
 -- -----------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.has_yearly_membership()
@@ -68,8 +31,100 @@ AS $$
 $$;
 
 -- -----------------------------------------------------------------------
+-- Early-access listing visibility enforcement
+-- Replace the open "anyone can view" policy with tier-aware policies so
+-- that listings added within the past 7 days are only visible to members.
+-- -----------------------------------------------------------------------
+DROP POLICY IF EXISTS "Anyone can view non-exclusive available properties" ON public.properties;
+
+-- Public users and free-tier see non-exclusive, non-VIP, available properties
+-- that were listed MORE THAN 7 days ago (no early access).
+CREATE POLICY "Public can view non-exclusive available properties"
+  ON public.properties FOR SELECT
+  USING (
+    (
+      status = 'available'
+      AND is_exclusive = false
+      AND (is_vip_preview = false OR is_vip_preview IS NULL)
+      AND (listed_at IS NULL OR listed_at <= now() - interval '7 days')
+    )
+    OR auth.uid() = agent_id
+    OR auth.uid() = seller_id
+  );
+
+-- Monthly+ members get early access to all non-exclusive, non-VIP available properties.
+CREATE POLICY "Members can view all non-exclusive non-VIP available properties"
+  ON public.properties FOR SELECT
+  USING (
+    status = 'available'
+    AND is_exclusive = false
+    AND (is_vip_preview = false OR is_vip_preview IS NULL)
+    AND EXISTS (
+      SELECT 1 FROM public.memberships
+      WHERE user_id = auth.uid()
+      AND tier IN ('monthly', 'yearly')
+      AND status = 'active'
+      AND (end_date IS NULL OR end_date > now())
+    )
+  );
+
+-- Replace the existing "Members can view exclusive properties" policy to
+-- restrict monthly members to non-VIP exclusive properties only.
+DROP POLICY IF EXISTS "Members can view exclusive properties" ON public.properties;
+
+CREATE POLICY "Monthly members can view exclusive non-VIP properties"
+  ON public.properties FOR SELECT
+  USING (
+    is_exclusive = true
+    AND (is_vip_preview = false OR is_vip_preview IS NULL)
+    AND status = 'available'
+    AND EXISTS (
+      SELECT 1 FROM public.memberships
+      WHERE user_id = auth.uid()
+      AND tier IN ('monthly', 'yearly')
+      AND status = 'active'
+      AND (end_date IS NULL OR end_date > now())
+    )
+  );
+
+-- Yearly-only members can view VIP preview properties (exclusive or otherwise).
+CREATE POLICY "Yearly members can view VIP preview properties"
+  ON public.properties FOR SELECT
+  USING (
+    is_vip_preview = true
+    AND status = 'available'
+    AND public.has_yearly_membership()
+  );
+
+-- -----------------------------------------------------------------------
+-- Priority booking enforcement via trigger
+-- Any user can schedule a regular viewing, but is_priority = true requires
+-- an active monthly or yearly membership — enforced at the database level.
+-- -----------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.check_priority_booking_membership()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.is_priority = true THEN
+    IF NOT public.has_active_membership(NEW.user_id) THEN
+      RAISE EXCEPTION 'Priority bookings require an active monthly or yearly membership';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER enforce_priority_booking_membership
+  BEFORE INSERT ON public.bookings
+  FOR EACH ROW EXECUTE FUNCTION public.check_priority_booking_membership();
+
+-- -----------------------------------------------------------------------
 -- concierge_bookings table (yearly-tier feature)
--- INSERT is enforced at the DB level: only yearly members may book.
+-- INSERT, SELECT, and UPDATE are enforced at the DB level:
+-- only yearly members may create or modify concierge bookings.
 -- -----------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.concierge_bookings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -94,7 +149,8 @@ CREATE POLICY "Yearly members can insert their own concierge bookings"
 
 CREATE POLICY "Yearly members can update their own concierge bookings"
   ON public.concierge_bookings FOR UPDATE
-  USING (auth.uid() = user_id AND public.has_yearly_membership());
+  USING (auth.uid() = user_id AND public.has_yearly_membership())
+  WITH CHECK (auth.uid() = user_id AND public.has_yearly_membership());
 
 CREATE POLICY "Admins can manage all concierge bookings"
   ON public.concierge_bookings FOR ALL
@@ -182,7 +238,7 @@ CREATE POLICY "Yearly members can delete their own event registrations"
   USING (auth.uid() = user_id AND public.has_yearly_membership());
 
 -- -----------------------------------------------------------------------
--- Flag existing exclusive properties as VIP preview
+-- Flag existing exclusive properties as VIP preview (yearly tier only)
 -- -----------------------------------------------------------------------
 UPDATE public.properties SET is_vip_preview = true WHERE is_exclusive = true;
 
