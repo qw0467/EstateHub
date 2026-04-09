@@ -42,10 +42,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [membership, setMembership] = useState<Membership | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchRole = async () => {
+  const fetchRole = async (): Promise<UserRole> => {
     const { data } = await supabase.rpc("get_current_user_role");
-    if (data) setRole(data as UserRole);
-    else setRole("free");
+    const resolved = (data as UserRole) ?? "free";
+    setRole(resolved);
+    return resolved;
   };
 
   const fetchMembership = async (userId: string) => {
@@ -74,22 +75,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    let mounted = true;
+
+    const bootstrap = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!mounted) return;
+
       setSession(session);
       setUser(session?.user ?? null);
+
       if (session?.user) {
-        fetchRole();
-        fetchMembership(session.user.id);
+        // Await both so that `loading` is only cleared after role is known.
+        // This prevents ProtectedRoute from reading a stale "free" role and
+        // redirecting a legitimate admin away on initial page load / refresh.
+        await Promise.all([
+          fetchRole(),
+          fetchMembership(session.user.id),
+        ]);
       }
-      setLoading(false);
-    });
+
+      if (mounted) setLoading(false);
+    };
+
+    bootstrap();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        // Role and membership are fetched asynchronously on auth-state changes
+        // (sign-in, token refresh).  The initial bootstrap already awaits them,
+        // so this covers subsequent changes without blocking the UI.
         fetchRole();
         fetchMembership(session.user.id);
       } else {
@@ -98,7 +117,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
