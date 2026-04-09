@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
@@ -15,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Users, Home, Calendar, CreditCard, AlertTriangle } from "lucide-react";
+import { Shield, Users, Home, Calendar, CreditCard } from "lucide-react";
 
 type Profile = {
   id: string;
@@ -61,8 +60,9 @@ type Membership = {
 const ROLE_OPTIONS = ["free", "seller", "member", "admin"] as const;
 
 const Admin = () => {
-  const { user, role, loading } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
+  // Access control is handled by ProtectedRoute; user is guaranteed to be
+  // an admin by the time this component renders.
   const { toast } = useToast();
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -72,23 +72,8 @@ const Admin = () => {
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        navigate("/auth");
-        return;
-      }
-      if (role !== "admin") {
-        toast({
-          variant: "destructive",
-          title: "Access Denied",
-          description: "You do not have permission to view this page.",
-        });
-        navigate("/");
-        return;
-      }
-      fetchAll();
-    }
-  }, [user, role, loading]);
+    fetchAll();
+  }, []);
 
   const fetchAll = async () => {
     setDataLoading(true);
@@ -268,7 +253,7 @@ const Admin = () => {
     return "outline";
   };
 
-  if (loading || (user && role !== "admin" && !dataLoading)) {
+  if (dataLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-accent flex items-center justify-center">
         <p>Loading...</p>

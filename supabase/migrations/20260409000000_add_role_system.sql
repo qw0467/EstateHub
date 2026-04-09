@@ -31,6 +31,31 @@ AS $$
   SELECT get_current_user_role() = 'admin'
 $$;
 
+-- SECURITY: Trigger that prevents non-admin users from modifying privileged
+-- fields (role, is_suspended) on their own profile, regardless of RLS policies.
+-- The existing broad "Users can update their own profile" policy would otherwise
+-- allow self-escalation to admin.
+CREATE OR REPLACE FUNCTION public.prevent_role_escalation()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- If the current user is not an admin, silently reset any attempted changes
+  -- to privileged fields back to their existing values.
+  IF get_current_user_role() != 'admin' THEN
+    NEW.role = OLD.role;
+    NEW.is_suspended = OLD.is_suspended;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER enforce_no_role_escalation
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.prevent_role_escalation();
+
 -- Admins can update any profile (role, suspension, etc.)
 CREATE POLICY "Admins can update any profile"
   ON public.profiles FOR UPDATE
