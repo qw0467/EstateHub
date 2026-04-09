@@ -19,6 +19,7 @@ export type Database = {
           booking_date: string
           created_at: string
           id: string
+          is_priority: boolean | null
           notes: string | null
           payment_amount: number
           payment_status: string | null
@@ -31,6 +32,7 @@ export type Database = {
           booking_date?: string
           created_at?: string
           id?: string
+          is_priority?: boolean | null
           notes?: string | null
           payment_amount: number
           payment_status?: string | null
@@ -43,6 +45,7 @@ export type Database = {
           booking_date?: string
           created_at?: string
           id?: string
+          is_priority?: boolean | null
           notes?: string | null
           payment_amount?: number
           payment_status?: string | null
@@ -67,6 +70,123 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      concierge_bookings: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          property_id: string | null
+          scheduled_at: string
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_id?: string | null
+          scheduled_at: string
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_id?: string | null
+          scheduled_at?: string
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "concierge_bookings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "concierge_bookings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_registrations: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_date: string
+          id: string
+          location: string | null
+          max_attendees: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_date: string
+          id?: string
+          location?: string | null
+          max_attendees?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          id?: string
+          location?: string | null
+          max_attendees?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       favorites: {
         Row: {
@@ -249,6 +369,8 @@ export type Database = {
           id: string
           image_url: string | null
           is_exclusive: boolean | null
+          is_vip_preview: boolean | null
+          listed_at: string | null
           price: number
           property_type: Database["public"]["Enums"]["property_type"]
           seller_id: string | null
@@ -272,6 +394,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_exclusive?: boolean | null
+          is_vip_preview?: boolean | null
+          listed_at?: string | null
           price: number
           property_type: Database["public"]["Enums"]["property_type"]
           seller_id?: string | null
@@ -295,6 +419,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_exclusive?: boolean | null
+          is_vip_preview?: boolean | null
+          listed_at?: string | null
           price?: number
           property_type?: Database["public"]["Enums"]["property_type"]
           seller_id?: string | null
@@ -316,6 +442,44 @@ export type Database = {
           {
             foreignKeyName: "properties_seller_id_fkey"
             columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_requests: {
+        Row: {
+          contact_method: string
+          created_at: string
+          full_name: string
+          id: string
+          query: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          contact_method: string
+          created_at?: string
+          full_name: string
+          id?: string
+          query: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          contact_method?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          query?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_requests_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -369,13 +533,13 @@ export type Tables<
     : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
         DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
+  ? (DefaultSchema["Tables"] &
+      DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+      Row: infer R
+    }
+    ? R
     : never
+  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
@@ -395,12 +559,12 @@ export type TablesInsert<
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+      Insert: infer I
+    }
+    ? I
     : never
+  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
@@ -420,12 +584,12 @@ export type TablesUpdate<
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+      Update: infer U
+    }
+    ? U
     : never
+  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
@@ -441,8 +605,8 @@ export type Enums<
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
@@ -458,8 +622,8 @@ export type CompositeTypes<
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never
 
 export const Constants = {
   public: {

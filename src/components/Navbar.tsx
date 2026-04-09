@@ -1,10 +1,10 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, Shield, UserCircle } from "lucide-react";
+import { LogOut, Shield, UserCircle, Crown } from "lucide-react";
 
 const Navbar = () => {
-  const { user, role, signOut } = useAuth();
+  const { user, role, membership, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -55,6 +55,15 @@ const Navbar = () => {
               >
                 <UserCircle className="h-4 w-4" />
                 My Profile
+              </Link>
+            )}
+            {user && (
+              <Link
+                to="/members"
+                className={`text-sm font-medium flex items-center gap-1 ${isActive("/members")}`}
+              >
+                <Crown className="h-4 w-4" />
+                Members
               </Link>
             )}
             {role === "admin" && (

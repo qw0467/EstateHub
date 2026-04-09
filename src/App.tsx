@@ -14,6 +14,7 @@ import Exclusive from "./pages/Exclusive";
 import Membership from "./pages/Membership";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
+import Members from "./pages/Members";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/exclusive" element={<Exclusive />} />
             <Route path="/membership" element={<Membership />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/members" element={<Members />} />
             <Route path="/admin" element={<ProtectedRoute roles={["admin"]}><Admin /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

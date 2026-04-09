@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bed, Bath, Maximize, MapPin, ArrowLeft, Heart } from "lucide-react";
+import { Bed, Bath, Maximize, MapPin, ArrowLeft, Heart, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -32,10 +33,13 @@ const PropertyDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, membership } = useAuth();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string>("");
+  const [priorityRequested, setPriorityRequested] = useState(false);
+  const [priorityLoading, setPriorityLoading] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -101,6 +105,33 @@ const PropertyDetail = () => {
       setIsFavorite(true);
       toast({ title: "Added to favorites" });
     }
+  };
+
+  const isMember =
+    membership?.status === "active" &&
+    (membership?.tier === "monthly" || membership?.tier === "yearly");
+
+  const requestPriorityViewing = async () => {
+    if (!user || !property) {
+      navigate("/auth");
+      return;
+    }
+    setPriorityLoading(true);
+    const { error } = await supabase.from("bookings").insert({
+      property_id: property.id,
+      user_id: user.id,
+      payment_amount: property.price,
+      status: "confirmed",
+      is_priority: true,
+      notes: "Priority viewing request via member portal",
+    });
+    if (error) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    } else {
+      setPriorityRequested(true);
+      toast({ title: "Priority viewing requested!", description: "Our team will contact you to arrange your priority slot." });
+    }
+    setPriorityLoading(false);
   };
 
   const formatPrice = (price: number) => {
@@ -257,6 +288,18 @@ const PropertyDetail = () => {
                 >
                   Make an Offer
                 </Button>
+                {isMember && (
+                  <Button
+                    className="w-full"
+                    variant="secondary"
+                    size="lg"
+                    onClick={requestPriorityViewing}
+                    disabled={priorityLoading || priorityRequested}
+                  >
+                    <Star className="h-4 w-4 mr-2" />
+                    {priorityRequested ? "Priority Requested" : priorityLoading ? "Requesting..." : "Request Priority Viewing"}
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>

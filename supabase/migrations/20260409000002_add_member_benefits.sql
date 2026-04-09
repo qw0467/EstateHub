@@ -1,0 +1,150 @@
+-- Add is_vip_preview and listed_at columns to properties
+ALTER TABLE public.properties
+ADD COLUMN IF NOT EXISTS is_vip_preview boolean DEFAULT false,
+ADD COLUMN IF NOT EXISTS listed_at timestamptz DEFAULT now();
+
+-- Backfill listed_at from created_at for existing rows
+UPDATE public.properties SET listed_at = created_at WHERE listed_at IS NULL;
+
+-- Add is_priority flag to bookings
+ALTER TABLE public.bookings
+ADD COLUMN IF NOT EXISTS is_priority boolean DEFAULT false;
+
+-- Create concierge_bookings table (yearly-tier feature)
+CREATE TABLE IF NOT EXISTS public.concierge_bookings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  property_id uuid REFERENCES public.properties(id) ON DELETE SET NULL,
+  scheduled_at timestamptz NOT NULL,
+  notes text,
+  status text DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled')),
+  created_at timestamptz DEFAULT now() NOT NULL,
+  updated_at timestamptz DEFAULT now() NOT NULL
+);
+
+ALTER TABLE public.concierge_bookings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own concierge bookings"
+  ON public.concierge_bookings FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own concierge bookings"
+  ON public.concierge_bookings FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own concierge bookings"
+  ON public.concierge_bookings FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can manage all concierge bookings"
+  ON public.concierge_bookings FOR ALL
+  USING (public.is_admin());
+
+CREATE TRIGGER update_concierge_bookings_updated_at
+  BEFORE UPDATE ON public.concierge_bookings
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Create support_requests table (monthly+ feature)
+CREATE TABLE IF NOT EXISTS public.support_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  full_name text NOT NULL,
+  query text NOT NULL,
+  contact_method text NOT NULL CHECK (contact_method IN ('email', 'phone', 'whatsapp')),
+  status text DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'resolved')),
+  created_at timestamptz DEFAULT now() NOT NULL
+);
+
+ALTER TABLE public.support_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own support requests"
+  ON public.support_requests FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own support requests"
+  ON public.support_requests FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Admins can manage all support requests"
+  ON public.support_requests FOR ALL
+  USING (public.is_admin());
+
+-- Create events table (yearly-tier feature)
+CREATE TABLE IF NOT EXISTS public.events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  description text,
+  location text,
+  event_date timestamptz NOT NULL,
+  max_attendees integer,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  updated_at timestamptz DEFAULT now() NOT NULL
+);
+
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated users can view events"
+  ON public.events FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Admins can manage events"
+  ON public.events FOR ALL
+  USING (public.is_admin());
+
+-- Create event_registrations table
+CREATE TABLE IF NOT EXISTS public.event_registrations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id uuid REFERENCES public.events(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  UNIQUE(event_id, user_id)
+);
+
+ALTER TABLE public.event_registrations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own event registrations"
+  ON public.event_registrations FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own event registrations"
+  ON public.event_registrations FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own event registrations"
+  ON public.event_registrations FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Flag some existing exclusive properties as VIP preview
+UPDATE public.properties SET is_vip_preview = true WHERE is_exclusive = true;
+
+-- Sample networking events
+INSERT INTO public.events (title, description, location, event_date, max_attendees)
+VALUES
+  (
+    'Luxury Property Networking Evening',
+    'An exclusive evening for yearly members to connect with top real estate professionals, developers, and high-net-worth investors over a curated fine-dining experience.',
+    'Grand Hyatt Doha, Pearl Ballroom',
+    now() + interval '14 days',
+    80
+  ),
+  (
+    'Real Estate Investment Masterclass',
+    'Learn advanced investment strategies for the Qatari and GCC property markets from industry-leading economists and portfolio managers.',
+    'Four Seasons Hotel, Doha',
+    now() + interval '28 days',
+    50
+  ),
+  (
+    'VIP New Development Launch',
+    'Be the first to preview and reserve units in our newest ultra-luxury residential development before it opens to the public.',
+    'EstateHub Premium Showroom, West Bay',
+    now() + interval '42 days',
+    40
+  ),
+  (
+    'Off-Plan Opportunities Summit',
+    'Explore curated off-plan investment opportunities across Doha, Lusail, and The Pearl with exclusive member pricing.',
+    'St. Regis Hotel, Doha',
+    now() + interval '60 days',
+    100
+  );
