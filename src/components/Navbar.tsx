@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, Shield } from "lucide-react";
+import { LogOut, Shield, UserCircle } from "lucide-react";
 
 const Navbar = () => {
   const { user, role, signOut } = useAuth();
@@ -48,6 +48,15 @@ const Navbar = () => {
             >
               Membership
             </Link>
+            {user && (
+              <Link
+                to="/profile"
+                className={`text-sm font-medium flex items-center gap-1 ${isActive("/profile")}`}
+              >
+                <UserCircle className="h-4 w-4" />
+                My Profile
+              </Link>
+            )}
             {role === "admin" && (
               <Link
                 to="/admin"

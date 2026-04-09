@@ -14,14 +14,48 @@ A proof-of-concept real estate platform for property listings, user memberships,
 
 - `src/` - Main application source
   - `components/` - Reusable UI components (including `ui/` for shadcn)
+    - `Navbar.tsx` - Shared sticky nav; shows "My Profile" for logged-in users; "Admin" for admins
+    - `ProtectedRoute.tsx` - Route guard accepting a `roles: UserRole[]` array
+    - `ListingForm.tsx` - Create/edit property listing form (used in Profile page)
+  - `contexts/AuthContext.tsx` - Global auth context (user, role, membership, loading)
   - `hooks/` - Custom React hooks
   - `integrations/supabase/` - Supabase client and generated types
   - `lib/` - Utility functions
   - `pages/` - Top-level page components
+    - `Admin.tsx` - Admin dashboard (Users/Properties/Bookings/Memberships tabs)
+    - `Profile.tsx` - User profile with two tabs: My Purchases + My Listings (create/edit/delete)
   - `App.tsx` - Root component with routing
   - `main.tsx` - Entry point
-- `supabase/` - Database migrations and config
+- `supabase/migrations/` - Database migration SQL files
 - `public/` - Static assets
+
+## Routes
+
+| Path | Access | Description |
+|---|---|---|
+| `/` | Public | Home page |
+| `/properties` | Public | Property listings |
+| `/property/:id` | Public | Property detail |
+| `/exclusive` | Public | Exclusive listings (members see full; others see teaser) |
+| `/membership` | Public | Membership plans |
+| `/auth` | Public | Sign in / sign up |
+| `/booking/:id` | Auth | Book a property |
+| `/profile` | Auth (any) | User profile – purchases + listings management |
+| `/admin` | Admin only | Admin dashboard |
+
+## Database Migrations
+
+Two migrations in `supabase/migrations/` must be applied via Supabase Dashboard → SQL Editor:
+
+1. `20260409000000_add_role_system.sql` — user_role enum, role/is_suspended on profiles,
+   get_current_user_role() / is_admin() RPCs, privilege-escalation trigger, admin RLS policies.
+2. `20260409000001_add_seller_system.sql` — bio on profiles, seller_id on properties,
+   RLS policies allowing any authenticated user to create/manage their own listings.
+
+After applying migrations, set the first admin:
+```sql
+UPDATE profiles SET role = 'admin' WHERE id = '<your-user-id>';
+```
 
 ## Environment Variables
 
