@@ -6,11 +6,11 @@ import { useToast } from "@/hooks/use-toast";
 type UserRole = "free" | "seller" | "member" | "admin";
 
 type ProtectedRouteProps = {
-  role: UserRole;
+  roles: UserRole[];
   children: React.ReactNode;
 };
 
-const ProtectedRoute = ({ role, children }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ roles, children }: ProtectedRouteProps) => {
   const { user, role: userRole, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -21,7 +21,7 @@ const ProtectedRoute = ({ role, children }: ProtectedRouteProps) => {
       navigate("/auth");
       return;
     }
-    if (userRole !== role) {
+    if (!roles.includes(userRole)) {
       toast({
         variant: "destructive",
         title: "Access Denied",
@@ -29,7 +29,7 @@ const ProtectedRoute = ({ role, children }: ProtectedRouteProps) => {
       });
       navigate("/");
     }
-  }, [user, userRole, loading, role, navigate, toast]);
+  }, [user, userRole, loading, navigate, toast]);
 
   if (loading) {
     return (
@@ -39,7 +39,7 @@ const ProtectedRoute = ({ role, children }: ProtectedRouteProps) => {
     );
   }
 
-  if (!user || userRole !== role) {
+  if (!user || !roles.includes(userRole)) {
     return null;
   }
 

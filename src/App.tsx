@@ -13,6 +13,8 @@ import Booking from "./pages/Booking";
 import Exclusive from "./pages/Exclusive";
 import Membership from "./pages/Membership";
 import Admin from "./pages/Admin";
+import SellerDashboard from "./pages/SellerDashboard";
+import SellerProfile from "./pages/SellerProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,7 +34,9 @@ const App = () => (
             <Route path="/booking/:id" element={<Booking />} />
             <Route path="/exclusive" element={<Exclusive />} />
             <Route path="/membership" element={<Membership />} />
-            <Route path="/admin" element={<ProtectedRoute role="admin"><Admin /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute roles={["admin"]}><Admin /></ProtectedRoute>} />
+            <Route path="/seller/dashboard" element={<ProtectedRoute roles={["seller", "admin"]}><SellerDashboard /></ProtectedRoute>} />
+            <Route path="/seller/:id" element={<SellerProfile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

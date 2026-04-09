@@ -202,6 +202,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
           created_at: string
           full_name: string | null
           id: string
@@ -212,6 +213,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           full_name?: string | null
           id: string
@@ -222,6 +224,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
@@ -248,6 +251,7 @@ export type Database = {
           is_exclusive: boolean | null
           price: number
           property_type: Database["public"]["Enums"]["property_type"]
+          seller_id: string | null
           sqft: number
           state: string
           status: Database["public"]["Enums"]["property_status"] | null
@@ -270,6 +274,7 @@ export type Database = {
           is_exclusive?: boolean | null
           price: number
           property_type: Database["public"]["Enums"]["property_type"]
+          seller_id?: string | null
           sqft: number
           state: string
           status?: Database["public"]["Enums"]["property_status"] | null
@@ -292,6 +297,7 @@ export type Database = {
           is_exclusive?: boolean | null
           price?: number
           property_type?: Database["public"]["Enums"]["property_type"]
+          seller_id?: string | null
           sqft?: number
           state?: string
           status?: Database["public"]["Enums"]["property_status"] | null
@@ -303,6 +309,13 @@ export type Database = {
           {
             foreignKeyName: "properties_agent_id_fkey"
             columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_seller_id_fkey"
+            columns: ["seller_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
