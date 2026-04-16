@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Home, ShoppingBag, Plus, Pencil, Trash2, CalendarDays } from "lucide-react";
+import { Home, ShoppingBag, Plus, Pencil, Trash2, CalendarDays, XCircle } from "lucide-react";
 
 type Booking = {
   id: string;
@@ -97,6 +97,7 @@ const Profile = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading) {
@@ -154,6 +155,22 @@ const Profile = () => {
       fetchListings();
     }
     setDeletingId(null);
+  };
+
+  const handleCancelViewing = async () => {
+    if (!cancellingId) return;
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status: "cancelled" })
+      .eq("id", cancellingId)
+      .eq("user_id", user!.id);
+    if (error) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    } else {
+      toast({ title: "Viewing cancelled" });
+      fetchBookings();
+    }
+    setCancellingId(null);
   };
 
   if (loading || dataLoading) {
@@ -233,9 +250,21 @@ const Profile = () => {
                               {formatPrice(b.payment_amount)}
                             </span>
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            Booked {new Date(b.booking_date).toLocaleDateString()}
-                          </p>
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <p className="text-xs text-muted-foreground">
+                              Booked {new Date(b.booking_date).toLocaleDateString()}
+                            </p>
+                            {b.status !== "cancelled" && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => setCancellingId(b.id)}
+                              >
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Cancel Viewing
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -393,6 +422,23 @@ const Profile = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!cancellingId} onOpenChange={(open) => { if (!open) setCancellingId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel viewing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will cancel your upcoming property viewing appointment.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Appointment</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelViewing} className="bg-destructive hover:bg-destructive/90">
+              Cancel Viewing
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
