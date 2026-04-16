@@ -1,8 +1,14 @@
--- Create enum for property types
-CREATE TYPE property_type AS ENUM ('house', 'apartment', 'condo', 'villa', 'penthouse');
+DO $$ BEGIN
+  CREATE TYPE property_type AS ENUM ('house', 'apartment', 'condo', 'villa', 'penthouse');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 
--- Create enum for property status
-CREATE TYPE property_status AS ENUM ('available', 'pending', 'sold');
+DO $$ BEGIN
+  CREATE TYPE property_status AS ENUM ('available', 'pending', 'sold');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 
 -- Create profiles table for user data
 CREATE TABLE public.profiles (
