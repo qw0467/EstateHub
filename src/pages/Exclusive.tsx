@@ -71,6 +71,7 @@ const Exclusive = () => {
     const { data, error } = await supabase
       .from("properties")
       .select("*")
+      .eq("is_exclusive", true)
       .eq("status", "available")
       .order("created_at", { ascending: false });
 
