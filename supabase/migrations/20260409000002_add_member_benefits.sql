@@ -36,6 +36,8 @@ $$;
 -- that listings added within the past 7 days are only visible to members.
 -- -----------------------------------------------------------------------
 DROP POLICY IF EXISTS "Anyone can view non-exclusive available properties" ON public.properties;
+DROP POLICY IF EXISTS "Monthly members can view exclusive non-VIP properties" ON public.properties;
+DROP POLICY IF EXISTS "Yearly members can view VIP preview properties" ON public.properties;
 
 -- Public users and free-tier see non-exclusive, non-VIP, available properties
 -- that were listed MORE THAN 7 days ago (no early access).
@@ -76,7 +78,6 @@ CREATE POLICY "Monthly members can view exclusive non-VIP properties"
   ON public.properties FOR SELECT
   USING (
     is_exclusive = true
-    AND (is_vip_preview = false OR is_vip_preview IS NULL)
     AND status = 'available'
     AND EXISTS (
       SELECT 1 FROM public.memberships
@@ -87,7 +88,6 @@ CREATE POLICY "Monthly members can view exclusive non-VIP properties"
     )
   );
 
--- Yearly-only members can view VIP preview properties (exclusive or otherwise).
 CREATE POLICY "Yearly members can view VIP preview properties"
   ON public.properties FOR SELECT
   USING (
@@ -238,7 +238,7 @@ CREATE POLICY "Yearly members can delete their own event registrations"
   USING (auth.uid() = user_id AND public.has_yearly_membership());
 
 -- -----------------------------------------------------------------------
--- Flag existing exclusive properties as VIP preview (yearly tier only)
+-- Flag existing exclusive properties as VIP preview
 -- -----------------------------------------------------------------------
 UPDATE public.properties SET is_vip_preview = true WHERE is_exclusive = true;
 
