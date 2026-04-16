@@ -49,6 +49,8 @@ const PropertyDetail = () => {
   }, [id]);
 
   const fetchProperty = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log("USER ID:", session?.user.id);
     const { data, error } = await supabase
       .from("properties")
       .select("*")
