@@ -118,7 +118,7 @@ END;
 $$;
 
 CREATE TRIGGER enforce_priority_booking_membership
-  BEFORE INSERT ON public.bookings
+  BEFORE INSERT OR UPDATE ON public.bookings
   FOR EACH ROW EXECUTE FUNCTION public.check_priority_booking_membership();
 
 -- -----------------------------------------------------------------------
