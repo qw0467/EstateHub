@@ -68,7 +68,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut({ scope: "global" });
-    await supabase.auth.setSession(null as any);
     setUser(null);
     setSession(null);
     setRole("free");
