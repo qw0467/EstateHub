@@ -75,6 +75,20 @@ type ConciergeBooking = {
   properties?: { title: string } | null;
 };
 
+type ViewingItem = {
+  id: string;
+  booking_date: string;
+  status: string | null;
+  notes: string | null;
+  properties?: {
+    id: string;
+    title: string;
+    city: string;
+    address: string;
+    state: string;
+  } | null;
+};
+
 type EventItem = {
   id: string;
   title: string;
@@ -173,6 +187,7 @@ const Members = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [registeredEventIds, setRegisteredEventIds] = useState<Set<string>>(new Set());
   const [dataLoading, setDataLoading] = useState(true);
+  const [viewings, setViewings] = useState<ViewingItem[]>([]);
 
   const [supportName, setSupportName] = useState("");
   const [supportQuery, setSupportQuery] = useState("");
@@ -214,6 +229,7 @@ const Members = () => {
       fetchEvents(),
       fetchRegistrations(),
       fetchConciergeBookings(),
+      fetchViewings(),
     ]);
     setDataLoading(false);
   };
@@ -259,6 +275,16 @@ const Members = () => {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     setConciergeBookings((data as ConciergeBooking[]) || []);
+  };
+
+  const fetchViewings = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("bookings")
+      .select("id, booking_date, status, notes, properties(id, title, city, address, state)")
+      .eq("user_id", user.id)
+      .order("booking_date", { ascending: false });
+    setViewings((data as ViewingItem[]) || []);
   };
 
   const cities = useMemo(() => [...new Set(allProperties.map((p) => p.city))].sort(), [allProperties]);
@@ -346,13 +372,13 @@ const Members = () => {
   }, [analysisMode, analysisProperty, analysisCity, allProperties]);
 
   const vipVanSuggestion = useMemo(() => {
-    const upcomingViewing = conciergeBookings.find((b) => b.status !== "cancelled");
+    const upcomingViewing = viewings.find((b) => b.status !== "cancelled");
     if (!upcomingViewing) return null;
-    const viewingProperty = allProperties.find((p) => p.id === upcomingViewing.property_id);
+    const viewingProperty = upcomingViewing.properties;
     if (!viewingProperty) return null;
     return {
       title: `VIP Van to ${viewingProperty.title}`,
-      scheduledFor: new Date(upcomingViewing.scheduled_at).toLocaleString("en-GB", {
+      scheduledFor: new Date(upcomingViewing.booking_date).toLocaleString("en-GB", {
         day: "numeric",
         month: "short",
         year: "numeric",
@@ -361,7 +387,7 @@ const Members = () => {
       }),
       location: `${viewingProperty.address}, ${viewingProperty.city}, ${viewingProperty.state}`,
     };
-  }, [conciergeBookings, allProperties]);
+  }, [viewings]);
 
   const handleSupportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
