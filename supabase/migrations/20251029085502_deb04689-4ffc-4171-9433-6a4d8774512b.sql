@@ -112,17 +112,17 @@ $$;
 -- Insert some exclusive properties
 INSERT INTO public.properties (title, description, price, address, city, state, zip_code, bedrooms, bathrooms, sqft, property_type, image_url, gallery_images, features, is_exclusive)
 VALUES
-  ('Ultra-Luxury Penthouse', 'Exclusive penthouse with private rooftop pool, 360-degree views, and concierge service. Only available to premium members.', 3500000, '1 Billionaire Row', 'New York', 'NY', '10019', 4, 5, 4200, 'penthouse',
+  ('Ultra-Luxury Penthouse', 'Exclusive penthouse with private rooftop pool, 360-degree views, and concierge service. Only available to premium members.', 3500000, 'Tower 12, The Pearl', 'Doha', 'Ad Dawhah', '00000', 4, 5, 4200, 'penthouse',
    'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&auto=format&fit=crop',
    ARRAY['https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&auto=format&fit=crop', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&auto=format&fit=crop'],
    ARRAY['Private Rooftop Pool', 'Wine Cellar', 'Smart Home System', 'Concierge Service', 'Panoramic Views', 'Chef Kitchen'], true),
   
-  ('Waterfront Estate', 'Magnificent waterfront estate with private dock, infinity pool, and guest house. Early access for members only.', 5200000, '88 Harbor Point', 'Newport', 'RI', '02840', 6, 7, 8500, 'villa',
+  ('Waterfront Estate', 'Magnificent waterfront estate with private dock, infinity pool, and guest house. Early access for members only.', 5200000, 'Parcel 88, Lusail Marina', 'Lusail', 'Al Daayen', '00000', 6, 7, 8500, 'villa',
    'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&auto=format&fit=crop',
    ARRAY['https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&auto=format&fit=crop'],
    ARRAY['Private Dock', 'Infinity Pool', 'Guest House', 'Wine Cellar', 'Home Theater', 'Ocean Views'], true),
   
-  ('Modern Architectural Masterpiece', 'Award-winning modern home with floor-to-ceiling glass, smart home integration, and breathtaking city views.', 2800000, '456 Hills Dr', 'Los Angeles', 'CA', '90210', 5, 5, 5200, 'house',
+  ('Modern Architectural Masterpiece', 'Award-winning modern home with floor-to-ceiling glass, smart home integration, and breathtaking city views.', 2800000, 'Villa 456, West Bay Lagoon', 'Doha', 'Ad Dawhah', '00000', 5, 5, 5200, 'house',
    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&auto=format&fit=crop',
    ARRAY['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&auto=format&fit=crop'],
    ARRAY['Award-Winning Design', 'Floor-to-Ceiling Glass', 'Smart Home', 'City Views', 'Infinity Pool', 'Home Gym'], true);
