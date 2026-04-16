@@ -345,6 +345,24 @@ const Members = () => {
     };
   }, [analysisMode, analysisProperty, analysisCity, allProperties]);
 
+  const vipVanSuggestion = useMemo(() => {
+    const upcomingViewing = conciergeBookings.find((b) => b.status !== "cancelled");
+    if (!upcomingViewing) return null;
+    const viewingProperty = allProperties.find((p) => p.id === upcomingViewing.property_id);
+    if (!viewingProperty) return null;
+    return {
+      title: `VIP Van to ${viewingProperty.title}`,
+      scheduledFor: new Date(upcomingViewing.scheduled_at).toLocaleString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      location: `${viewingProperty.address}, ${viewingProperty.city}, ${viewingProperty.state}`,
+    };
+  }, [conciergeBookings, allProperties]);
+
   const handleSupportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -806,6 +824,28 @@ const Members = () => {
                       <CardTitle className="text-base">Book a Session</CardTitle>
                     </CardHeader>
                     <CardContent>
+                      {vipVanSuggestion && (
+                        <div className="mb-6 rounded-xl border border-[hsl(var(--real-estate-accent))]/30 bg-[hsl(var(--real-estate-accent))]/10 p-4">
+                          <p className="text-sm font-semibold text-foreground">Suggested VIP Van Booking</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {vipVanSuggestion.title} for your scheduled viewing on {vipVanSuggestion.scheduledFor}.
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Pickup can be arranged for {vipVanSuggestion.location}.
+                          </p>
+                          <Button
+                            className="mt-3"
+                            variant="outline"
+                            onClick={() =>
+                              setConciergeNotes((prev) =>
+                                prev ? `${prev}\nVIP Van requested for scheduled viewing.` : "VIP Van requested for scheduled viewing."
+                              )
+                            }
+                          >
+                            Add VIP Van to Notes
+                          </Button>
+                        </div>
+                      )}
                       <form onSubmit={handleConciergeSubmit} className="space-y-4">
                         <div className="space-y-2">
                           <Label>Property (optional)</Label>
