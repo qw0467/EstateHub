@@ -22,6 +22,8 @@ type Property = {
   sqft: number;
   property_type: string;
   image_url: string | null;
+  listed_at?: string | null;
+  is_vip_preview?: boolean | null;
 };
 
 type Membership = {
