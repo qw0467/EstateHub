@@ -193,12 +193,12 @@ VALUES
    ARRAY['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&auto=format&fit=crop'],
    ARRAY['Fitted Kitchen', 'Balcony', 'Furnished', 'Storage Room']),
   
-('Desert Oasis Villa', 'Serene villa in Al Rayyan with breathtaking garden views, perfect for families seeking tranquility.', 3800000, 'Villa 88, Al Rayyan Gardens', 'Al Rayyan', 'Al Rayyan', '00974', 3, 2, 2100, 'house',
+('Desert Oasis Villa', 'Serene villa in Al Rayyan with breathtaking garden views, perfect for families seeking tranquility.', 3800000, 'Villa 88, Al Rayyan Gardens', 'Al Rayyan', 'Doha', '00974', 3, 2, 2100, 'house',
    'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=800&auto=format&fit=crop',
    ARRAY['https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=800&auto=format&fit=crop'],
    ARRAY['Garden Views', 'Majlis Room', 'Outdoor Terrace', 'Jacuzzi', 'BBQ Area']),
   
-('Luxury Penthouse', 'Spectacular penthouse in Lusail with 360-degree city and sea views with premium amenities.', 6500000, 'Sky Villa, Lusail Marina', 'Lusail', 'Al Daayen', '00974', 3, 3, 2400, 'penthouse',
+('Luxury Penthouse', 'Spectacular penthouse in Lusail with 360-degree city and sea views with premium amenities.', 6500000, 'Sky Villa, Lusail Marina', 'Lusail', 'Doha', '00974', 3, 3, 2400, 'penthouse',
    'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&auto=format&fit=crop',
    ARRAY['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&auto=format&fit=crop'],
    ARRAY['Rooftop Terrace', '24/7 Concierge', 'Private Elevator', 'Floor-to-Ceiling Windows', 'Italian Marble']);
