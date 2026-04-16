@@ -81,6 +81,11 @@ const Exclusive = () => {
     setLoading(false);
   };
 
+  const refreshExclusiveProperties = async () => {
+    setLoading(true);
+    await fetchExclusiveProperties();
+  };
+
   const hasPremiumAccess = membership && 
     (membership.tier === "monthly" || membership.tier === "yearly") && 
     membership.status === "active";
@@ -141,7 +146,9 @@ const Exclusive = () => {
                     </p>
                   </div>
                 </div>
-                <Button variant="outline" onClick={() => navigate("/membership")}>Manage</Button>
+                <Button variant="outline" onClick={() => refreshExclusiveProperties()}>
+                  Refresh
+                </Button>
               </div>
             )}
           </CardContent>
