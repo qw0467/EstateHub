@@ -46,6 +46,9 @@ const Exclusive = () => {
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
+
+    console.log("USER ID:", session?.user?.id);
+    
     if (!session) {
       navigate("/auth");
       return;
