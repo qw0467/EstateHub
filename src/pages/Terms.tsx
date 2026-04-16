@@ -10,7 +10,6 @@ const Terms = () => {
         <p className="text-muted-foreground mb-8">Last updated: April 9, 2026</p>
 
         <div className="prose prose-slate max-w-none space-y-8 text-sm leading-relaxed">
-
           <section>
             <h2 className="text-xl font-semibold mb-3">1. Acceptance of Terms</h2>
             <p>
@@ -157,7 +156,6 @@ const Terms = () => {
               <p>Or use our <a href="/contact" className="text-primary underline">Contact Us</a> form.</p>
             </address>
           </section>
-
         </div>
       </main>
       <Footer />

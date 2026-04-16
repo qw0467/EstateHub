@@ -88,9 +88,7 @@ const Exclusive = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-accent">
       <Navbar />
-
       <div className="container mx-auto px-4 py-8">
-        {/* Hero Section */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[hsl(var(--real-estate-accent))]/20 to-[hsl(var(--real-estate-primary))]/20 px-4 py-2 rounded-full mb-4">
             <Crown className="h-5 w-5 text-[hsl(var(--real-estate-accent))]" />
@@ -106,7 +104,6 @@ const Exclusive = () => {
           </p>
         </div>
 
-        {/* Membership Status Card */}
         <Card className="max-w-2xl mx-auto mb-12 border-0 shadow-xl bg-gradient-to-br from-card to-card/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -122,9 +119,7 @@ const Exclusive = () => {
                 <p className="text-muted-foreground mb-6">
                   Upgrade to view our exclusive property collection
                 </p>
-                <Button size="lg" onClick={() => navigate("/membership")}>
-                  View Membership Plans
-                </Button>
+                <Button size="lg" onClick={() => navigate("/membership")}>View Membership Plans</Button>
               </div>
             ) : (
               <div className="flex items-center justify-between">
@@ -146,35 +141,27 @@ const Exclusive = () => {
                     </p>
                   </div>
                 </div>
-                <Button variant="outline" onClick={() => navigate("/membership")}>
-                  Manage
-                </Button>
+                <Button variant="outline" onClick={() => navigate("/membership")}>Manage</Button>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Properties Grid */}
         {hasPremiumAccess ? (
           <div>
             <h2 className="text-2xl font-semibold mb-6">
               {properties.length} Exclusive {properties.length === 1 ? "Property" : "Properties"}
             </h2>
             {loading ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Loading exclusive properties...</p>
-              </div>
+              <div className="text-center py-12"><p className="text-muted-foreground">Loading exclusive properties...</p></div>
             ) : properties.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No exclusive properties available at the moment.</p>
-              </div>
+              <div className="text-center py-12"><p className="text-muted-foreground">No exclusive properties available at the moment.</p></div>
             ) : (
               <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {properties.map((property) => (
                   <div key={property.id} className="relative">
                     <Badge className="absolute top-4 left-4 z-10 bg-[hsl(var(--real-estate-accent))] text-black border-0">
-                      <Crown className="h-3 w-3 mr-1" />
-                      Exclusive
+                      <Crown className="h-3 w-3 mr-1" /> Exclusive
                     </Badge>
                     <PropertyCard property={property} />
                   </div>

@@ -62,14 +62,14 @@ const Contact = () => {
                   <Phone className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                   <div>
                     <p className="font-medium">Phone</p>
-                    <p className="text-muted-foreground">+44 20 7946 0000</p>
+                    <p className="text-muted-foreground">+974 1111-1111</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                   <div>
                     <p className="font-medium">Office</p>
-                    <p className="text-muted-foreground">12 Harbour Lane, London, EC2A 4BX</p>
+                    <p className="text-muted-foreground">West Bay Tower 12, Doha, Qatar</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">

@@ -80,7 +80,6 @@ const Properties = () => {
   };
 
   const fetchProperties = async () => {
-    // Fetch regular properties
     const { data: regularData, error: regularError } = await supabase
       .from("properties")
       .select("*")
@@ -98,7 +97,6 @@ const Properties = () => {
       setProperties(regularData || []);
     }
 
-    // Fetch exclusive properties (for display, even if user can't access)
     const { data: exclusiveData } = await supabase
       .from("properties")
       .select("*")
@@ -151,9 +149,7 @@ const Properties = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-accent">
       <Navbar />
-
       <div className="container mx-auto px-4 py-8">
-        {/* Search Bar */}
         <div className="mb-8">
           <div className="max-w-3xl mx-auto">
             <div className="relative">
@@ -170,14 +166,11 @@ const Properties = () => {
         </div>
 
         <div className="grid lg:grid-cols-[280px_1fr] gap-8">
-          {/* Filters Sidebar */}
           <aside className="lg:sticky lg:top-24 h-fit">
             <PropertyFilters filters={filters} setFilters={setFilters} />
           </aside>
 
-          {/* Property Grid */}
           <div>
-            {/* Exclusive Properties Section */}
             {exclusiveProperties.length > 0 && (
               <div className="mb-12">
                 <div className="flex items-center justify-between mb-6">
@@ -223,7 +216,6 @@ const Properties = () => {
               </div>
             )}
 
-            {/* Regular Properties Section */}
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-semibold">
                 {filteredProperties.length} {exclusiveProperties.length > 0 ? "Standard" : ""} Properties {filteredProperties.length === 0 ? "Found" : ""}
