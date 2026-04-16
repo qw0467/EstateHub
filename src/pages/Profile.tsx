@@ -169,17 +169,16 @@ const Profile = () => {
       <Navbar />
 
       <div className="container mx-auto px-4 py-8 max-w-5xl">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-1">My Profile</h1>
           <p className="text-muted-foreground text-sm">{user?.email}</p>
         </div>
 
-        <Tabs defaultValue="purchases">
+        <Tabs defaultValue="appointments">
           <TabsList className="mb-6">
-            <TabsTrigger value="purchases" className="flex items-center gap-2">
-              <ShoppingBag className="h-4 w-4" />
-              My Purchases
+            <TabsTrigger value="appointments" className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Appointments
             </TabsTrigger>
             <TabsTrigger value="listings" className="flex items-center gap-2">
               <Home className="h-4 w-4" />
@@ -187,13 +186,12 @@ const Profile = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* ─── PURCHASES TAB ─── */}
-          <TabsContent value="purchases">
+          <TabsContent value="appointments">
             {bookings.length === 0 ? (
               <Card className="border-0 shadow-lg">
                 <CardContent className="py-16 text-center">
                   <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground text-lg">No bookings yet.</p>
+                  <p className="text-muted-foreground text-lg">No upcoming appointments yet.</p>
                   <Button className="mt-4" onClick={() => navigate("/properties")}>
                     Browse Properties
                   </Button>
@@ -220,6 +218,9 @@ const Profile = () => {
                             <p className="text-sm text-muted-foreground">
                               {b.properties?.city}
                             </p>
+                            <p className="text-sm text-muted-foreground mt-2">
+                              Viewing date: {new Date(b.booking_date).toLocaleDateString()}
+                            </p>
                           </div>
                           <div className="flex flex-wrap gap-2 items-center">
                             <Badge variant={statusColor(b.status)}>
@@ -244,7 +245,6 @@ const Profile = () => {
             )}
           </TabsContent>
 
-          {/* ─── LISTINGS TAB ─── */}
           <TabsContent value="listings">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-semibold">
@@ -351,7 +351,6 @@ const Profile = () => {
         </Tabs>
       </div>
 
-      {/* Create / Edit listing dialog */}
       <Dialog
         open={showForm}
         onOpenChange={(open) => {
@@ -378,7 +377,6 @@ const Profile = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation */}
       <AlertDialog
         open={!!deletingId}
         onOpenChange={(open) => { if (!open) setDeletingId(null); }}

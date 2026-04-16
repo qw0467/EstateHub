@@ -7,8 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CreditCard, Calendar } from "lucide-react";
+import { ArrowLeft, CreditCard, Calendar as CalendarIcon } from "lucide-react";
 
 type Property = {
   id: string;
@@ -28,6 +31,8 @@ const Booking = () => {
   const [submitting, setSubmitting] = useState(false);
   const [notes, setNotes] = useState("");
   const [user, setUser] = useState<any>(null);
+  const [viewingDate, setViewingDate] = useState<Date | undefined>();
+  const [viewingDateOpen, setViewingDateOpen] = useState(false);
 
   const bookingType = searchParams.get("type") === "purchase" ? "purchase" : "viewing";
 
@@ -70,6 +75,14 @@ const Booking = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !property) return;
+    if (bookingType === "viewing" && !viewingDate) {
+      toast({
+        variant: "destructive",
+        title: "Select a viewing date",
+        description: "Please choose a date from the calendar before submitting your request.",
+      });
+      return;
+    }
 
     setSubmitting(true);
 
@@ -77,7 +90,10 @@ const Booking = () => {
       property_id: property.id,
       user_id: user.id,
       payment_amount: property.price,
-      notes: notes || null,
+      notes: [notes || null, viewingDate ? `Viewing date: ${format(viewingDate, "PPP")}` : null]
+        .filter(Boolean)
+        .join("\n"),
+      booking_date: viewingDate ? viewingDate.toISOString() : new Date().toISOString(),
       status: bookingType === "purchase" ? "pending" : "confirmed",
     });
 
@@ -92,7 +108,7 @@ const Booking = () => {
         title: "Success!",
         description: `Your ${bookingType} request has been submitted.`,
       });
-      navigate("/properties");
+      navigate("/profile");
     }
     setSubmitting(false);
   };
@@ -120,7 +136,6 @@ const Booking = () => {
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
           <div className="grid md:grid-cols-2 gap-8">
-            {/* Property Summary */}
             <Card className="border-0 shadow-xl h-fit">
               <CardHeader>
                 <CardTitle>Property Summary</CardTitle>
@@ -143,7 +158,6 @@ const Booking = () => {
               </CardContent>
             </Card>
 
-            {/* Booking Form */}
             <Card className="border-0 shadow-xl">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -154,7 +168,7 @@ const Booking = () => {
                     </>
                   ) : (
                     <>
-                      <Calendar className="h-5 w-5" />
+                      <CalendarIcon className="h-5 w-5" />
                       Schedule Viewing
                     </>
                   )}
@@ -172,6 +186,31 @@ const Booking = () => {
                       className="bg-muted"
                     />
                   </div>
+
+                  {bookingType === "viewing" && (
+                    <div className="space-y-2">
+                      <Label>Viewing Date</Label>
+                      <Popover open={viewingDateOpen} onOpenChange={setViewingDateOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start font-normal">
+                            {viewingDate ? format(viewingDate, "PPP") : "Select a date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={viewingDate}
+                            onSelect={(date) => {
+                              setViewingDate(date);
+                              setViewingDateOpen(false);
+                            }}
+                            disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="notes">
