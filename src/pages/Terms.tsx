@@ -39,7 +39,7 @@ const Terms = () => {
             <ul className="list-disc pl-6 mt-2 space-y-1">
               <li>Maintaining the security and confidentiality of your password</li>
               <li>All activity that occurs under your account</li>
-              <li>Notifying us immediately at support@estatehub.com of any unauthorised use</li>
+              <li>Notifying us immediately at estatehubqa@gmail.com of any unauthorised use</li>
               <li>Ensuring your account information remains accurate and up to date</li>
             </ul>
             <p className="mt-2">
@@ -152,7 +152,7 @@ const Terms = () => {
             </p>
             <address className="mt-2 not-italic">
               <p><strong>EstateHub</strong></p>
-              <p>Email: <a href="mailto:support@estatehub.com" className="text-primary underline">support@estatehub.com</a></p>
+              <p>Email: <a href="mailto:estatehubqa@gmail.com" className="text-primary underline">estatehubqa@gmail.com</a></p>
               <p>Or use our <a href="/contact" className="text-primary underline">Contact Us</a> form.</p>
             </address>
           </section>

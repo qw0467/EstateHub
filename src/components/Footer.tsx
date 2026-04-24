@@ -31,8 +31,8 @@ const Footer = () => {
             <li><Link to="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
             <li><Link to="/terms" className="hover:text-white transition-colors">Terms & Conditions</Link></li>
             <li>
-              <a href="mailto:support@estatehub.com" className="hover:text-white transition-colors flex items-center gap-1">
-                <Mail className="h-3.5 w-3.5" /> support@estatehub.com
+              <a href="mailto:estatehubqa@gmail.com" className="hover:text-white transition-colors flex items-center gap-1">
+                <Mail className="h-3.5 w-3.5" /> estatehubqa@gmail.com
               </a>
             </li>
             <li>

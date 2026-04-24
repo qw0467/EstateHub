@@ -53,8 +53,8 @@ const Contact = () => {
                   <Mail className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                   <div>
                     <p className="font-medium">Email</p>
-                    <a href="mailto:support@estatehub.com" className="text-muted-foreground hover:text-primary transition-colors">
-                      support@estatehub.com
+                    <a href="mailto:estatehubqa@gmail.com" className="text-muted-foreground hover:text-primary transition-colors">
+                      estatehubqa@gmail.com
                     </a>
                   </div>
                 </div>

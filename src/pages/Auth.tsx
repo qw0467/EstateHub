@@ -24,7 +24,7 @@ You must be at least 18 years of age to create an account. By registering, you c
 You are responsible for:
   • Maintaining the security and confidentiality of your password
   • All activity that occurs under your account
-  • Notifying us immediately at support@estatehub.com of any unauthorised access
+  • Notifying us immediately at estatehubqa@gmail.com of any unauthorised access
   • Keeping your account information accurate and up to date
 
 EstateHub reserves the right to suspend or terminate accounts that violate these Terms or are suspected of fraudulent activity.
@@ -68,7 +68,7 @@ These Terms are governed by and construed in accordance with the laws of England
 We may revise these Terms at any time. We will update the "Last updated" date and, where appropriate, notify registered users by email. Continued use constitutes acceptance.
 
 14. Contact Us
-Questions about these Terms? Contact us at support@estatehub.com or visit our Contact Us page.
+Questions about these Terms? Contact us at estatehubqa@gmail.com or visit our Contact Us page.
 `.trim();
 
 const Auth = () => {
