@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import PaymentModal from "@/components/PaymentModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +34,7 @@ const pricingPlans = [
   {
     name: "Monthly Premium",
     tier: "monthly",
-    price: 360,
+    price: 0.99,
     period: "month",
     description: "For serious property hunters",
     features: [
@@ -49,7 +50,7 @@ const pricingPlans = [
   {
     name: "Yearly Premium",
     tier: "yearly",
-    price: 3640,
+    price: 0.99,
     period: "year",
     description: "Best value for committed buyers",
     features: [
@@ -68,6 +69,9 @@ const Membership = () => {
   const [user, setUser] = useState<any>(null);
   const [membership, setMembership] = useState<Membership | null>(null);
   const [loading, setLoading] = useState(false);
+  const [paymentModal, setPaymentModal] = useState<{ open: boolean; tier: string; price: number; name: string }>({
+    open: false, tier: "", price: 0, name: "",
+  });
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -91,26 +95,25 @@ const Membership = () => {
       .select("*")
       .eq("user_id", userId)
       .maybeSingle();
-
-    if (data) {
-      setMembership(data);
-    }
+    if (data) setMembership(data);
   };
 
-  const handleSubscribe = async (tier: string, price: number) => {
-    if (!user) return;
+  const handleSubscribeClick = (tier: string, price: number, name: string) => {
+    if (tier === "free") {
+      activateMembership(tier, price);
+      return;
+    }
+    setPaymentModal({ open: true, tier, price, name });
+  };
 
+  const activateMembership = async (tier: string, price: number) => {
+    if (!user) return;
     setLoading(true);
 
-    // Calculate end date
     const endDate = new Date();
-    if (tier === "monthly") {
-      endDate.setMonth(endDate.getMonth() + 1);
-    } else if (tier === "yearly") {
-      endDate.setFullYear(endDate.getFullYear() + 1);
-    }
+    if (tier === "monthly") endDate.setMonth(endDate.getMonth() + 1);
+    else if (tier === "yearly") endDate.setFullYear(endDate.getFullYear() + 1);
 
-    // Create or update membership
     const membershipData = {
       user_id: user.id,
       tier: tier as "free" | "monthly" | "yearly",
@@ -126,13 +129,8 @@ const Membership = () => {
         .from("memberships")
         .update(membershipData)
         .eq("id", membership.id);
-
       if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error.message,
-        });
+        toast({ variant: "destructive", title: "Error", description: error.message });
         setLoading(false);
         return;
       }
@@ -142,50 +140,40 @@ const Membership = () => {
         .insert(membershipData)
         .select()
         .single();
-
       if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error.message,
-        });
+        toast({ variant: "destructive", title: "Error", description: error.message });
         setLoading(false);
         return;
       }
       membershipId = data.id;
     }
 
-    // Record payment
     if (price > 0) {
       await supabase.from("payments").insert({
         user_id: user.id,
         membership_id: membershipId,
         amount: price,
         payment_status: "completed",
-        payment_method: "demo",
-        transaction_id: `demo_${Date.now()}`,
+        payment_method: "card",
+        transaction_id: `txn_${Date.now()}`,
       });
     }
 
-    toast({
-      title: "Success!",
-      description: `You've subscribed to the ${tier} plan.`,
-    });
-
+    toast({ title: "Welcome!", description: `Your ${tier} membership is now active.` });
     await fetchMembership(user.id);
     setLoading(false);
 
-    if (tier !== "free") {
-      navigate("/exclusive");
-    }
+    if (tier !== "free") navigate("/exclusive");
   };
+
+  const formatPrice = (price: number) =>
+    price === 0 ? "Free" : `QAR ${price % 1 === 0 ? price : price.toFixed(2)}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-accent">
       <Navbar />
 
       <div className="container mx-auto px-4 py-16">
-        {/* Hero Section */}
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[hsl(var(--real-estate-accent))]/20 to-[hsl(var(--real-estate-primary))]/20 px-4 py-2 rounded-full mb-4">
             <Sparkles className="h-5 w-5 text-[hsl(var(--real-estate-accent))]" />
@@ -201,7 +189,6 @@ const Membership = () => {
           </p>
         </div>
 
-        {/* Current Membership Status */}
         {membership && (
           <Card className="max-w-2xl mx-auto mb-12 border-0 shadow-xl">
             <CardHeader>
@@ -228,15 +215,12 @@ const Membership = () => {
           </Card>
         )}
 
-        {/* Pricing Cards */}
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {pricingPlans.map((plan) => (
             <Card
               key={plan.tier}
               className={`relative overflow-hidden border-0 shadow-xl ${
-                plan.popular
-                  ? "ring-2 ring-[hsl(var(--real-estate-primary))] scale-105"
-                  : ""
+                plan.popular ? "ring-2 ring-[hsl(var(--real-estate-primary))] scale-105" : ""
               }`}
             >
               {plan.popular && (
@@ -249,16 +233,22 @@ const Membership = () => {
                   {plan.badge}
                 </Badge>
               )}
-              
+
               <CardHeader className={plan.popular ? "pt-12" : ""}>
                 <CardTitle className="text-2xl">{plan.name}</CardTitle>
                 <CardDescription>{plan.description}</CardDescription>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold">QAR {plan.price}</span>
-                  <span className="text-muted-foreground">/{plan.period}</span>
+                  {plan.price === 0 ? (
+                    <span className="text-4xl font-bold">Free</span>
+                  ) : (
+                    <>
+                      <span className="text-4xl font-bold">QAR {plan.price.toFixed(2)}</span>
+                      <span className="text-muted-foreground">/{plan.period}</span>
+                    </>
+                  )}
                 </div>
               </CardHeader>
-              
+
               <CardContent className="space-y-4">
                 <ul className="space-y-3">
                   {plan.features.map((feature, index) => (
@@ -268,12 +258,12 @@ const Membership = () => {
                     </li>
                   ))}
                 </ul>
-                
+
                 <Button
                   className="w-full"
                   size="lg"
                   variant={plan.popular ? "default" : "outline"}
-                  onClick={() => handleSubscribe(plan.tier, plan.price)}
+                  onClick={() => handleSubscribeClick(plan.tier, plan.price, plan.name)}
                   disabled={loading || membership?.tier === plan.tier}
                 >
                   {membership?.tier === plan.tier
@@ -287,12 +277,20 @@ const Membership = () => {
           ))}
         </div>
 
-        {/* Note */}
-        <p className="text-center text-sm text-muted-foreground mt-12">
-          * This is a demo payment system. In production, this would integrate with Stripe or similar payment processors.
+        <p className="text-center text-xs text-muted-foreground mt-12">
+          Payments are processed securely. Prices shown are for demonstration purposes.
         </p>
       </div>
+
       <Footer />
+
+      <PaymentModal
+        open={paymentModal.open}
+        onClose={() => setPaymentModal((p) => ({ ...p, open: false }))}
+        onSuccess={() => activateMembership(paymentModal.tier, paymentModal.price)}
+        planName={paymentModal.name}
+        price={paymentModal.price}
+      />
     </div>
   );
 };
