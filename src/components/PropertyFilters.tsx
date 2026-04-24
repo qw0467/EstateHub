@@ -38,7 +38,7 @@ const PropertyFilters = ({ filters, setFilters }: PropertyFiltersProps) => {
               onValueChange={(value) =>
                 setFilters({ ...filters, priceRange: value as [number, number] })
               }
-              max={5000000}
+              max={15000000}
               min={0}
               step={50000}
               className="mb-3"

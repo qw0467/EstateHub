@@ -48,7 +48,7 @@ const Properties = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [filters, setFilters] = useState<PropertyFiltersType>({
-    priceRange: [0, 5000000],
+    priceRange: [0, 15000000],
     bedrooms: "any",
     bathrooms: "any",
     propertyType: "all",
