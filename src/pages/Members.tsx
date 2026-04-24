@@ -366,10 +366,15 @@ const Members = () => {
     const subject = analysisProperty ?? null;
     const medianPrice = median(areaProperties.map((p) => p.price));
     const medianPricePerSqft = median(areaProperties.map((p) => p.price / p.sqft));
-    const estimatedMonthlyRent = subject
-      ? subject.sqft * 18
-      : Math.round(median(areaProperties.map((p) => p.sqft)) * 18);
+
+    const RENT_RATE = 7;   // QAR per sqft per month (Qatar market rate)
+    const MAX_YIELD = 0.07; // cap at 7% annual yield to avoid outlier sqft inflating estimates
     const priceForYield = subject?.price ?? medianPrice;
+    const capRent = Math.round(priceForYield * MAX_YIELD / 12);
+    const sqftRent = subject
+      ? Math.round(subject.sqft * RENT_RATE)
+      : Math.round(median(areaProperties.map((p) => p.sqft)) * RENT_RATE);
+    const estimatedMonthlyRent = Math.min(sqftRent, capRent);
     const grossYield = ((estimatedMonthlyRent * 12) / priceForYield) * 100;
 
     const comparables = subject
@@ -1282,7 +1287,7 @@ const Members = () => {
                     )}
 
                     <div className="text-xs text-muted-foreground bg-muted/30 rounded p-3">
-                      Estimates use a market rental rate of QAR 18/sqft/month and are computed from current listing data only.
+                      Estimates use a market rental rate of QAR 7/sqft/month (capped at 7% annual yield) based on Qatar residential market benchmarks.
                       This is indicative only and not financial advice.
                     </div>
                   </div>
