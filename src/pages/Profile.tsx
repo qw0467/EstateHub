@@ -65,6 +65,7 @@ type Listing = {
   bathrooms: number;
   sqft: number;
   image_url: string | null;
+  gallery_images: string[] | null;
   is_exclusive: boolean | null;
   features: string[] | null;
 };
@@ -131,8 +132,8 @@ const Profile = () => {
   const fetchListings = async () => {
     const { data } = await supabase
       .from("properties")
-      .select("id, title, description, price, property_type, status, address, city, state, zip_code, bedrooms, bathrooms, sqft, image_url, is_exclusive, features")
-      .eq("user_id", user!.id)
+      .select("id, title, description, price, property_type, status, address, city, state, zip_code, bedrooms, bathrooms, sqft, image_url, gallery_images, is_exclusive, features")
+      .eq("seller_id", user!.id)
       .order("created_at", { ascending: false });
     setListings((data as Listing[]) ?? []);
   };
