@@ -92,11 +92,8 @@ const Booking = () => {
 
   const fetchExistingBookings = async () => {
     const { data } = await supabase
-      .from("bookings")
-      .select("booking_date, status")
-      .eq("property_id", id)
-      .neq("status", "cancelled");
-    if (data) setExistingBookings(data);
+      .rpc("get_property_booked_slots", { p_property_id: id });
+    if (data) setExistingBookings(data as BookingRecord[]);
   };
 
   const slotStates = useMemo(() => {
