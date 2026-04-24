@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Home, ShoppingBag, Plus, Pencil, Trash2, CalendarDays, XCircle, Clock3 } from "lucide-react";
+import { Home, Plus, Pencil, Trash2, CalendarDays, XCircle, Clock3, Inbox, Mail, User } from "lucide-react";
 
 type Booking = {
   id: string;
@@ -48,6 +48,21 @@ type Booking = {
     bathrooms: number;
     sqft: number;
   } | null;
+};
+
+type IncomingBooking = {
+  id: string;
+  booking_date: string;
+  status: string;
+  notes: string | null;
+  property_id: string;
+  property_title: string;
+  property_address: string;
+  property_city: string;
+  property_image_url: string | null;
+  booker_email: string;
+  booker_id: string;
+  created_at: string;
 };
 
 type Listing = {
@@ -94,6 +109,7 @@ const Profile = () => {
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [listings, setListings] = useState<Listing[]>([]);
+  const [incomingBookings, setIncomingBookings] = useState<IncomingBooking[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   const [showForm, setShowForm] = useState(false);
@@ -113,7 +129,7 @@ const Profile = () => {
 
   const fetchAll = async () => {
     setDataLoading(true);
-    await Promise.all([fetchBookings(), fetchListings()]);
+    await Promise.all([fetchBookings(), fetchListings(), fetchIncomingBookings()]);
     setDataLoading(false);
   };
 
@@ -136,6 +152,14 @@ const Profile = () => {
       .eq("seller_id", user!.id)
       .order("created_at", { ascending: false });
     setListings((data as Listing[]) ?? []);
+  };
+
+  const fetchIncomingBookings = async () => {
+    const { data, error } = await supabase
+      .rpc("get_seller_bookings", { p_seller_id: user!.id });
+    if (!error && data) {
+      setIncomingBookings(data as IncomingBooking[]);
+    }
   };
 
   const handleFormSuccess = () => {
@@ -185,6 +209,9 @@ const Profile = () => {
   });
   const cancelledBookings = bookings.filter((b) => b.status === "cancelled");
 
+  const activeIncoming = incomingBookings.filter((b) => b.status !== "cancelled");
+  const cancelledIncoming = incomingBookings.filter((b) => b.status === "cancelled");
+
   if (loading || dataLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-accent flex items-center justify-center">
@@ -209,12 +236,22 @@ const Profile = () => {
               <CalendarDays className="h-4 w-4" />
               Appointments
             </TabsTrigger>
+            <TabsTrigger value="enquiries" className="flex items-center gap-2">
+              <Inbox className="h-4 w-4" />
+              Enquiries
+              {activeIncoming.length > 0 && (
+                <span className="ml-1 bg-primary text-primary-foreground text-xs rounded-full px-1.5 py-0.5 leading-none">
+                  {activeIncoming.length}
+                </span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="listings" className="flex items-center gap-2">
               <Home className="h-4 w-4" />
               My Listings
             </TabsTrigger>
           </TabsList>
 
+          {/* MY APPOINTMENTS */}
           <TabsContent value="appointments">
             {upcomingBookings.length === 0 ? (
               <Card className="border-0 shadow-lg">
@@ -244,9 +281,7 @@ const Profile = () => {
                             <h3 className="font-semibold text-lg leading-tight">
                               {b.properties?.title ?? "Property"}
                             </h3>
-                            <p className="text-sm text-muted-foreground">
-                              {b.properties?.city}
-                            </p>
+                            <p className="text-sm text-muted-foreground">{b.properties?.city}</p>
                             <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
                               <CalendarDays className="h-4 w-4" />
                               {new Date(b.booking_date).toLocaleDateString()}
@@ -258,20 +293,14 @@ const Profile = () => {
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-2 items-center">
-                            <Badge variant={statusColor(b.status)}>
-                              {b.status ?? "pending"}
-                            </Badge>
+                            <Badge variant={statusColor(b.status)}>{b.status ?? "pending"}</Badge>
                           </div>
                           <div className="flex items-center justify-between gap-3 flex-wrap">
                             <p className="text-xs text-muted-foreground">
                               Booked {new Date(b.booking_date).toLocaleDateString()}
                             </p>
                             {b.status !== "cancelled" && (
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => setCancellingId(b.id)}
-                              >
+                              <Button size="sm" variant="destructive" onClick={() => setCancellingId(b.id)}>
                                 <XCircle className="h-3 w-3 mr-1" />
                                 Cancel Viewing
                               </Button>
@@ -308,7 +337,6 @@ const Profile = () => {
                   </div>
                 )}
               </div>
-
               <div>
                 <h2 className="text-xl font-semibold mb-4">Cancelled Appointments</h2>
                 {cancelledBookings.length === 0 ? (
@@ -334,17 +362,120 @@ const Profile = () => {
             </div>
           </TabsContent>
 
+          {/* ENQUIRIES ON MY PROPERTIES */}
+          <TabsContent value="enquiries">
+            {incomingBookings.length === 0 ? (
+              <Card className="border-0 shadow-lg">
+                <CardContent className="py-16 text-center">
+                  <Inbox className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground text-lg">No enquiries on your listings yet.</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    When someone books a viewing on one of your properties, it will appear here.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                {activeIncoming.length > 0 && (
+                  <div className="space-y-3">
+                    <h2 className="text-lg font-semibold">Active Enquiries ({activeIncoming.length})</h2>
+                    {activeIncoming.map((b) => (
+                      <Card key={b.id} className="border-0 shadow-md overflow-hidden">
+                        <CardContent className="p-0">
+                          <div className="flex flex-col sm:flex-row">
+                            {b.property_image_url && (
+                              <img
+                                src={b.property_image_url}
+                                alt={b.property_title}
+                                className="w-full sm:w-36 h-36 object-cover shrink-0"
+                              />
+                            )}
+                            <div className="p-5 flex-1 space-y-3">
+                              <div className="flex items-start justify-between gap-2 flex-wrap">
+                                <div>
+                                  <h3 className="font-semibold text-base leading-tight">{b.property_title}</h3>
+                                  <p className="text-xs text-muted-foreground">{b.property_address}, {b.property_city}</p>
+                                </div>
+                                <Badge variant={statusColor(b.status)} className="capitalize shrink-0">
+                                  {b.status}
+                                </Badge>
+                              </div>
+
+                              <div className="flex flex-wrap gap-4 text-sm">
+                                <span className="flex items-center gap-1.5 text-muted-foreground">
+                                  <User className="h-3.5 w-3.5" />
+                                  <a
+                                    href={`mailto:${b.booker_email}`}
+                                    className="text-primary hover:underline font-medium"
+                                  >
+                                    {b.booker_email}
+                                  </a>
+                                </span>
+                                <span className="flex items-center gap-1.5 text-muted-foreground">
+                                  <CalendarDays className="h-3.5 w-3.5" />
+                                  {new Date(b.booking_date).toLocaleDateString("en-GB", {
+                                    weekday: "short", day: "numeric", month: "short", year: "numeric",
+                                  })}
+                                </span>
+                                <span className="flex items-center gap-1.5 text-muted-foreground">
+                                  <Clock3 className="h-3.5 w-3.5" />
+                                  {new Date(b.booking_date).toLocaleTimeString([], {
+                                    hour: "numeric", minute: "2-digit",
+                                  })}
+                                </span>
+                              </div>
+
+                              {b.notes && (
+                                <p className="text-xs text-muted-foreground bg-muted/40 rounded px-3 py-2">
+                                  {b.notes}
+                                </p>
+                              )}
+
+                              <div className="flex items-center gap-2 pt-1">
+                                <Button size="sm" variant="outline" asChild>
+                                  <a href={`mailto:${b.booker_email}`}>
+                                    <Mail className="h-3 w-3 mr-1" />
+                                    Email Buyer
+                                  </a>
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+
+                {cancelledIncoming.length > 0 && (
+                  <div className="space-y-3">
+                    <h2 className="text-lg font-semibold text-muted-foreground">Cancelled ({cancelledIncoming.length})</h2>
+                    {cancelledIncoming.map((b) => (
+                      <Card key={b.id} className="border-0 shadow-sm opacity-60">
+                        <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+                          <div>
+                            <p className="font-medium text-sm">{b.property_title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {b.booker_email} · {new Date(b.booking_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <Badge variant="destructive">Cancelled</Badge>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* MY LISTINGS */}
           <TabsContent value="listings">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-semibold">
                 {listings.length} Listing{listings.length !== 1 ? "s" : ""}
               </h2>
-              <Button
-                onClick={() => {
-                  setEditingListing(null);
-                  setShowForm(true);
-                }}
-              >
+              <Button onClick={() => { setEditingListing(null); setShowForm(true); }}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Listing
               </Button>
@@ -354,16 +485,8 @@ const Profile = () => {
               <Card className="border-0 shadow-lg">
                 <CardContent className="py-16 text-center">
                   <Home className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground text-lg">
-                    You haven't listed any properties yet.
-                  </p>
-                  <Button
-                    className="mt-4"
-                    onClick={() => {
-                      setEditingListing(null);
-                      setShowForm(true);
-                    }}
-                  >
+                  <p className="text-muted-foreground text-lg">You haven't listed any properties yet.</p>
+                  <Button className="mt-4" onClick={() => { setEditingListing(null); setShowForm(true); }}>
                     <Plus className="h-4 w-4 mr-2" />
                     Create Your First Listing
                   </Button>
@@ -376,56 +499,30 @@ const Profile = () => {
                     <CardContent className="p-0">
                       <div className="flex flex-col sm:flex-row">
                         <img
-                          src={
-                            listing.image_url ||
-                            "https://images.unsplash.com/photo-1560184897-ae75f418493e?w=400&auto=format&fit=crop"
-                          }
+                          src={listing.image_url || "https://images.unsplash.com/photo-1560184897-ae75f418493e?w=400&auto=format&fit=crop"}
                           alt={listing.title}
                           className="w-full sm:w-40 h-40 object-cover shrink-0"
                         />
                         <div className="p-5 flex-1 flex flex-col justify-between gap-3">
                           <div>
-                            <h3 className="font-semibold text-lg leading-tight">
-                              {listing.title}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              {listing.address}, {listing.city}
-                            </p>
-                            <p className="text-primary font-bold mt-1">
-                              {formatPrice(listing.price)}
-                            </p>
+                            <h3 className="font-semibold text-lg leading-tight">{listing.title}</h3>
+                            <p className="text-sm text-muted-foreground">{listing.address}, {listing.city}</p>
+                            <p className="text-primary font-bold mt-1">{formatPrice(listing.price)}</p>
                           </div>
                           <div className="flex flex-wrap gap-2 items-center">
                             <Badge variant={statusColor(listing.status)} className="capitalize">
                               {listing.status ?? "available"}
                             </Badge>
-                            <Badge variant="outline" className="capitalize">
-                              {listing.property_type}
-                            </Badge>
+                            <Badge variant="outline" className="capitalize">{listing.property_type}</Badge>
                             {listing.is_exclusive && (
-                              <Badge className="bg-amber-500 text-black border-0">
-                                Exclusive
-                              </Badge>
+                              <Badge className="bg-amber-500 text-black border-0">Exclusive</Badge>
                             )}
                             <div className="ml-auto flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setEditingListing(listing);
-                                  setShowForm(true);
-                                }}
-                              >
-                                <Pencil className="h-3 w-3 mr-1" />
-                                Edit
+                              <Button size="sm" variant="outline" onClick={() => { setEditingListing(listing); setShowForm(true); }}>
+                                <Pencil className="h-3 w-3 mr-1" /> Edit
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => setDeletingId(listing.id)}
-                              >
-                                <Trash2 className="h-3 w-3 mr-1" />
-                                Delete
+                              <Button size="sm" variant="destructive" onClick={() => setDeletingId(listing.id)}>
+                                <Trash2 className="h-3 w-3 mr-1" /> Delete
                               </Button>
                             </div>
                           </div>
@@ -440,49 +537,30 @@ const Profile = () => {
         </Tabs>
       </div>
 
-      <Dialog
-        open={showForm}
-        onOpenChange={(open) => {
-          if (!open) {
-            setShowForm(false);
-            setEditingListing(null);
-          }
-        }}
-      >
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) { setShowForm(false); setEditingListing(null); } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {editingListing ? "Edit Listing" : "Create New Listing"}
-            </DialogTitle>
+            <DialogTitle>{editingListing ? "Edit Listing" : "Create New Listing"}</DialogTitle>
           </DialogHeader>
           <ListingForm
             existing={editingListing ?? undefined}
             onSuccess={handleFormSuccess}
-            onCancel={() => {
-              setShowForm(false);
-              setEditingListing(null);
-            }}
+            onCancel={() => { setShowForm(false); setEditingListing(null); }}
           />
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
-        open={!!deletingId}
-        onOpenChange={(open) => { if (!open) setDeletingId(null); }}
-      >
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => { if (!open) setDeletingId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete listing?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove the listing and all associated data. This
-              action cannot be undone.
+              This will permanently remove the listing and all associated data. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -491,15 +569,11 @@ const Profile = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel viewing?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will cancel your upcoming property viewing appointment.
-            </AlertDialogDescription>
+            <AlertDialogDescription>This will cancel your upcoming property viewing appointment.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep Appointment</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCancelViewing} className="bg-destructive hover:bg-destructive/90">
-              Cancel Viewing
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleCancelViewing} className="bg-destructive hover:bg-destructive/90">Cancel Viewing</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
