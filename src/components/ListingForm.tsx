@@ -166,7 +166,7 @@ const ListingForm = ({ existing, onSuccess, onCancel }: ListingFormProps) => {
     } else {
       ({ error } = await supabase
         .from("properties")
-        .insert({ ...payload, user_id: user.id }));
+        .insert({ ...payload, seller_id: user.id }));
     }
 
     setSaving(false);
