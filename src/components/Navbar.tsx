@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, Shield, UserCircle, Crown } from "lucide-react";
+import { LogOut, Shield, UserCircle, Crown, CalendarDays } from "lucide-react";
 
 const Navbar = () => {
   const { user, role, membership, signOut } = useAuth();
@@ -80,9 +80,13 @@ const Navbar = () => {
           <div className="flex items-center gap-3">
             {user ? (
               <>
-                <span className="text-sm text-muted-foreground hidden sm:inline max-w-[180px] truncate">
-                  {user.email}
-                </span>
+                <Link
+                  to="/profile"
+                  className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors max-w-[220px]"
+                >
+                  <CalendarDays className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{user.email}</span>
+                </Link>
                 <Button variant="outline" size="sm" onClick={handleSignOut}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Sign Out

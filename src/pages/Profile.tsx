@@ -25,11 +25,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Home, ShoppingBag, Plus, Pencil, Trash2, CalendarDays, XCircle } from "lucide-react";
+import { Home, ShoppingBag, Plus, Pencil, Trash2, CalendarDays, XCircle, Clock3 } from "lucide-react";
 
 type Booking = {
   id: string;
   booking_date: string;
+  viewing_time: string | null;
   status: string | null;
   payment_status: string | null;
   payment_amount: number;
@@ -235,8 +236,14 @@ const Profile = () => {
                             <p className="text-sm text-muted-foreground">
                               {b.properties?.city}
                             </p>
-                            <p className="text-sm text-muted-foreground mt-2">
-                              Viewing date: {new Date(b.booking_date).toLocaleDateString()}
+                            <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
+                              <CalendarDays className="h-4 w-4" />
+                              {new Date(b.booking_date).toLocaleDateString()}
+                              <Clock3 className="h-4 w-4 ml-2" />
+                              {new Date(b.booking_date).toLocaleTimeString([], {
+                                hour: "numeric",
+                                minute: "2-digit",
+                              })}
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-2 items-center">

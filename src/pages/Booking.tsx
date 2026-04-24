@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CreditCard, Calendar as CalendarIcon } from "lucide-react";
+import { ArrowLeft, CreditCard, Calendar as CalendarIcon, Clock3 } from "lucide-react";
 
 type Property = {
   id: string;
@@ -33,6 +33,7 @@ const Booking = () => {
   const [user, setUser] = useState<any>(null);
   const [viewingDate, setViewingDate] = useState<Date | undefined>();
   const [viewingDateOpen, setViewingDateOpen] = useState(false);
+  const [viewingTime, setViewingTime] = useState("");
 
   const bookingType = searchParams.get("type") === "purchase" ? "purchase" : "viewing";
 
@@ -83,6 +84,14 @@ const Booking = () => {
       });
       return;
     }
+    if (bookingType === "viewing" && !viewingTime) {
+      toast({
+        variant: "destructive",
+        title: "Select a viewing time",
+        description: "Please choose a time before submitting your request.",
+      });
+      return;
+    }
 
     setSubmitting(true);
 
@@ -90,10 +99,22 @@ const Booking = () => {
       property_id: property.id,
       user_id: user.id,
       payment_amount: property.price,
-      notes: [notes || null, viewingDate ? `Viewing date: ${format(viewingDate, "PPP")}` : null]
+      notes: [
+        notes || null,
+        viewingDate ? `Viewing date: ${format(viewingDate, "PPP")}` : null,
+        viewingTime ? `Viewing time: ${viewingTime}` : null,
+      ]
         .filter(Boolean)
         .join("\n"),
-      booking_date: viewingDate ? viewingDate.toISOString() : new Date().toISOString(),
+      booking_date: viewingDate
+        ? new Date(
+            viewingDate.getFullYear(),
+            viewingDate.getMonth(),
+            viewingDate.getDate(),
+            Number(viewingTime.split(":")[0] || 0),
+            Number(viewingTime.split(":")[1] || 0),
+          ).toISOString()
+        : new Date().toISOString(),
       status: bookingType === "purchase" ? "pending" : "confirmed",
     });
 
@@ -188,7 +209,7 @@ const Booking = () => {
                   </div>
 
                   {bookingType === "viewing" && (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Label>Viewing Date</Label>
                       <Popover open={viewingDateOpen} onOpenChange={setViewingDateOpen}>
                         <PopoverTrigger asChild>
@@ -209,6 +230,19 @@ const Booking = () => {
                           />
                         </PopoverContent>
                       </Popover>
+                      <div className="space-y-2">
+                        <Label htmlFor="viewing-time">Viewing Time</Label>
+                        <div className="relative">
+                          <Clock3 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            id="viewing-time"
+                            type="time"
+                            value={viewingTime}
+                            onChange={(e) => setViewingTime(e.target.value)}
+                            className="pl-9"
+                          />
+                        </div>
+                      </div>
                     </div>
                   )}
 
