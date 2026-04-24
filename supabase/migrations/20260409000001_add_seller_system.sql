@@ -18,14 +18,11 @@ CREATE POLICY "Owners can view their own properties"
   ON public.properties FOR SELECT
   USING (auth.uid() = seller_id);
 
--- Only users with role seller or admin can create new listings.
--- seller_id must equal the current user so they cannot impersonate others.
+-- Any authenticated user can create a listing as long as seller_id = their own id.
+-- Role restriction removed: seller_id = auth.uid() already prevents impersonation.
 CREATE POLICY "Sellers can create listings"
   ON public.properties FOR INSERT
-  WITH CHECK (
-    auth.uid() = seller_id
-    AND get_current_user_role() IN ('seller', 'admin')
-  );
+  WITH CHECK (auth.uid() = seller_id);
 
 -- Owners can update only their own listings
 CREATE POLICY "Owners can update their own properties"

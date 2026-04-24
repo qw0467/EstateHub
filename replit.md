@@ -51,16 +51,30 @@ A proof-of-concept real estate platform for property listings, user memberships,
 
 ## Database Migrations
 
-Two migrations in `supabase/migrations/` must be applied via Supabase Dashboard → SQL Editor:
+All 6 migrations in `supabase/migrations/` must be applied via Supabase Dashboard → SQL Editor
+in filename order. The first 3 (2025-10 dates) were applied at project creation. The remaining
+3 must be applied manually:
 
 1. `20260409000000_add_role_system.sql` — user_role enum, role/is_suspended on profiles,
    get_current_user_role() / is_admin() RPCs, privilege-escalation trigger, admin RLS policies.
 2. `20260409000001_add_seller_system.sql` — bio on profiles, seller_id on properties,
-   RLS policies allowing any authenticated user to create/manage their own listings.
+   RLS INSERT policy allows any authenticated user (seller_id = auth.uid()).
+3. `20260409000002_add_member_benefits.sql` — is_vip_preview/listed_at on properties,
+   has_yearly_membership() function, concierge_bookings, support_requests, events,
+   event_registrations tables with RLS, sample events.
 
-After applying migrations, set the first admin:
+After applying all migrations, set the first admin user:
 ```sql
 UPDATE profiles SET role = 'admin' WHERE id = '<your-user-id>';
+```
+
+**Known RLS fix**: If the "Sellers can create listings" policy was applied with a role restriction,
+run this to fix it so any authenticated user can create listings:
+```sql
+DROP POLICY IF EXISTS "Sellers can create listings" ON public.properties;
+CREATE POLICY "Sellers can create listings"
+  ON public.properties FOR INSERT
+  WITH CHECK (auth.uid() = seller_id);
 ```
 
 ## Environment Variables
