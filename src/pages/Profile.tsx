@@ -132,7 +132,7 @@ const Profile = () => {
     const { data } = await supabase
       .from("properties")
       .select("id, title, description, price, property_type, status, address, city, state, zip_code, bedrooms, bathrooms, sqft, image_url, is_exclusive, features")
-      .eq("seller_id", user!.id)
+      .eq("user_id", user!.id)
       .order("created_at", { ascending: false });
     setListings((data as Listing[]) ?? []);
   };
