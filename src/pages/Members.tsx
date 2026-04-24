@@ -89,6 +89,10 @@ type ViewingItem = {
   } | null;
 };
 
+type PropertyChoice = PropertyItem & {
+  source: "market" | "appointment";
+};
+
 type EventItem = {
   id: string;
   title: string;
@@ -289,6 +293,44 @@ const Members = () => {
 
   const cities = useMemo(() => [...new Set(allProperties.map((p) => p.city))].sort(), [allProperties]);
 
+  const bookedProperties = useMemo(() => {
+    const seen = new Set<string>();
+    return viewings
+      .map((v) => v.properties)
+      .filter((p): p is NonNullable<ViewingItem["properties"]> => !!p)
+      .filter((p) => {
+        if (seen.has(p.id)) return false;
+        seen.add(p.id);
+        return true;
+      })
+      .map((p) => ({
+        ...allProperties.find((item) => item.id === p.id),
+        id: p.id,
+        title: p.title,
+        city: p.city,
+        address: p.address,
+        state: p.state,
+        price: allProperties.find((item) => item.id === p.id)?.price ?? 0,
+        sqft: allProperties.find((item) => item.id === p.id)?.sqft ?? 0,
+        bedrooms: allProperties.find((item) => item.id === p.id)?.bedrooms ?? 0,
+        bathrooms: allProperties.find((item) => item.id === p.id)?.bathrooms ?? 0,
+        property_type: allProperties.find((item) => item.id === p.id)?.property_type ?? "house",
+        image_url: allProperties.find((item) => item.id === p.id)?.image_url ?? null,
+        listed_at: allProperties.find((item) => item.id === p.id)?.listed_at ?? null,
+        is_vip_preview: allProperties.find((item) => item.id === p.id)?.is_vip_preview ?? null,
+        source: "appointment" as const,
+      })) as PropertyChoice[];
+  }, [viewings, allProperties]);
+
+  const propertyChoices = useMemo(() => {
+    const marketChoices = allProperties.map((p) => ({ ...p, source: "market" as const }));
+    const combined = [...marketChoices];
+    for (const booked of bookedProperties) {
+      if (!combined.some((p) => p.id === booked.id)) combined.push(booked);
+    }
+    return combined;
+  }, [allProperties, bookedProperties]);
+
   const marketData: MarketData[] = useMemo(() => {
     const byCity: Record<string, { prices: number[]; price_per_sqfts: number[] }> = {};
     for (const p of allProperties) {
@@ -310,8 +352,8 @@ const Members = () => {
   }, [allProperties]);
 
   const analysisProperty = useMemo(
-    () => allProperties.find((p) => p.id === analysisPropertyId) ?? null,
-    [analysisPropertyId, allProperties]
+    () => propertyChoices.find((p) => p.id === analysisPropertyId) ?? null,
+    [analysisPropertyId, propertyChoices]
   );
 
   const analysisResults = useMemo(() => {
@@ -884,8 +926,8 @@ const Members = () => {
                                 className="w-full justify-between font-normal"
                               >
                                 {conciergePropertyId
-                                  ? allProperties.find((p) => p.id === conciergePropertyId)
-                                      ? `${allProperties.find((p) => p.id === conciergePropertyId)!.title} — ${allProperties.find((p) => p.id === conciergePropertyId)!.city}`
+                                  ? propertyChoices.find((p) => p.id === conciergePropertyId)
+                                      ? `${propertyChoices.find((p) => p.id === conciergePropertyId)!.title} — ${propertyChoices.find((p) => p.id === conciergePropertyId)!.city}`
                                       : "Select a property…"
                                   : "Select a property…"}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -897,7 +939,7 @@ const Members = () => {
                                 <CommandList>
                                   <CommandEmpty>No properties found.</CommandEmpty>
                                   <CommandGroup>
-                                    {allProperties.map((p) => (
+                                    {propertyChoices.map((p) => (
                                       <CommandItem
                                         key={p.id}
                                         value={`${p.title} ${p.city}`}
@@ -910,6 +952,9 @@ const Members = () => {
                                           className={cn("mr-2 h-4 w-4", conciergePropertyId === p.id ? "opacity-100" : "opacity-0")}
                                         />
                                         <span className="truncate">{p.title} — {p.city}</span>
+                                        <Badge variant="outline" className="ml-2 text-[10px] uppercase">
+                                          {p.source === "appointment" ? "Booked" : "Market"}
+                                        </Badge>
                                       </CommandItem>
                                     ))}
                                   </CommandGroup>
@@ -1045,9 +1090,9 @@ const Members = () => {
                             <SelectValue placeholder="Choose a property…" />
                           </SelectTrigger>
                           <SelectContent>
-                            {allProperties.map((p) => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.title} — {p.city}
+                              {propertyChoices.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.title} — {p.city} ({p.source === "appointment" ? "Booked" : "Market"})
                               </SelectItem>
                             ))}
                           </SelectContent>
