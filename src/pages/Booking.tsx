@@ -11,7 +11,23 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ArrowLeft, CreditCard, Calendar as CalendarIcon, Clock3 } from "lucide-react";
+
+const TIME_SLOTS = Array.from({ length: 21 }, (_, i) => {
+  const totalMins = 9 * 60 + i * 30;
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  const label = `${h % 12 === 0 ? 12 : h % 12}:${m.toString().padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+  const value = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+  return { label, value };
+});
 
 type Property = {
   id: string;
@@ -231,17 +247,20 @@ const Booking = () => {
                         </PopoverContent>
                       </Popover>
                       <div className="space-y-2">
-                        <Label htmlFor="viewing-time">Viewing Time</Label>
-                        <div className="relative">
-                          <Clock3 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            id="viewing-time"
-                            type="time"
-                            value={viewingTime}
-                            onChange={(e) => setViewingTime(e.target.value)}
-                            className="pl-9"
-                          />
-                        </div>
+                        <Label>Viewing Time</Label>
+                        <Select value={viewingTime} onValueChange={setViewingTime}>
+                          <SelectTrigger className="w-full">
+                            <Clock3 className="h-4 w-4 text-muted-foreground mr-2 shrink-0" />
+                            <SelectValue placeholder="Select a time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TIME_SLOTS.map((slot) => (
+                              <SelectItem key={slot.value} value={slot.value}>
+                                {slot.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   )}
