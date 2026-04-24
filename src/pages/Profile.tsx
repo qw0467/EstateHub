@@ -174,6 +174,16 @@ const Profile = () => {
     setCancellingId(null);
   };
 
+  const upcomingBookings = bookings.filter((b) => {
+    if (b.status === "cancelled") return false;
+    return new Date(b.booking_date) >= new Date();
+  });
+  const pastBookings = bookings.filter((b) => {
+    if (b.status === "cancelled") return false;
+    return new Date(b.booking_date) < new Date();
+  });
+  const cancelledBookings = bookings.filter((b) => b.status === "cancelled");
+
   if (loading || dataLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-accent flex items-center justify-center">
@@ -205,7 +215,7 @@ const Profile = () => {
           </TabsList>
 
           <TabsContent value="appointments">
-            {bookings.length === 0 ? (
+            {upcomingBookings.length === 0 ? (
               <Card className="border-0 shadow-lg">
                 <CardContent className="py-16 text-center">
                   <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -217,7 +227,7 @@ const Profile = () => {
               </Card>
             ) : (
               <div className="space-y-4">
-                {bookings.map((b) => (
+                {upcomingBookings.map((b) => (
                   <Card key={b.id} className="border-0 shadow-md overflow-hidden">
                     <CardContent className="p-0">
                       <div className="flex flex-col sm:flex-row">
@@ -250,12 +260,6 @@ const Profile = () => {
                             <Badge variant={statusColor(b.status)}>
                               {b.status ?? "pending"}
                             </Badge>
-                            <Badge variant={statusColor(b.payment_status)}>
-                              Payment: {b.payment_status ?? "pending"}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground ml-auto">
-                              {formatPrice(b.payment_amount)}
-                            </span>
                           </div>
                           <div className="flex items-center justify-between gap-3 flex-wrap">
                             <p className="text-xs text-muted-foreground">
@@ -279,6 +283,54 @@ const Profile = () => {
                 ))}
               </div>
             )}
+
+            <div className="mt-10 space-y-8">
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Past Appointments</h2>
+                {pastBookings.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No past appointments yet.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {pastBookings.map((b) => (
+                      <Card key={b.id} className="border-0 shadow-sm">
+                        <CardContent className="p-5 flex items-center justify-between gap-3">
+                          <div>
+                            <h3 className="font-medium">{b.properties?.title ?? "Property"}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(b.booking_date).toLocaleString()}
+                            </p>
+                          </div>
+                          <Badge variant="outline">Past</Badge>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Cancelled Appointments</h2>
+                {cancelledBookings.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No cancelled appointments.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {cancelledBookings.map((b) => (
+                      <Card key={b.id} className="border-0 shadow-sm">
+                        <CardContent className="p-5 flex items-center justify-between gap-3">
+                          <div>
+                            <h3 className="font-medium">{b.properties?.title ?? "Property"}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(b.booking_date).toLocaleString()}
+                            </p>
+                          </div>
+                          <Badge variant="destructive">Cancelled</Badge>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="listings">
