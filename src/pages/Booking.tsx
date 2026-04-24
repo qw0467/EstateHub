@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
@@ -9,16 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ArrowLeft, CreditCard, Calendar as CalendarIcon, Clock3 } from "lucide-react";
+import { CreditCard, Calendar as CalendarIcon, Clock3 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const TIME_SLOTS = Array.from({ length: 21 }, (_, i) => {
   const totalMins = 9 * 60 + i * 30;
@@ -26,7 +20,7 @@ const TIME_SLOTS = Array.from({ length: 21 }, (_, i) => {
   const m = totalMins % 60;
   const label = `${h % 12 === 0 ? 12 : h % 12}:${m.toString().padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
   const value = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-  return { label, value };
+  return { label, value, h, m };
 });
 
 type Property = {
@@ -35,6 +29,11 @@ type Property = {
   price: number;
   address: string;
   image_url: string | null;
+};
+
+type BookingRecord = {
+  booking_date: string;
+  status: string;
 };
 
 const Booking = () => {
@@ -50,6 +49,7 @@ const Booking = () => {
   const [viewingDate, setViewingDate] = useState<Date | undefined>();
   const [viewingDateOpen, setViewingDateOpen] = useState(false);
   const [viewingTime, setViewingTime] = useState("");
+  const [existingBookings, setExistingBookings] = useState<BookingRecord[]>([]);
 
   const bookingType = searchParams.get("type") === "purchase" ? "purchase" : "viewing";
 
@@ -57,6 +57,7 @@ const Booking = () => {
     checkAuth();
     if (id) {
       fetchProperty();
+      fetchExistingBookings();
     }
   }, [id]);
 
@@ -89,6 +90,45 @@ const Booking = () => {
     setLoading(false);
   };
 
+  const fetchExistingBookings = async () => {
+    const { data } = await supabase
+      .from("bookings")
+      .select("booking_date, status")
+      .eq("property_id", id)
+      .neq("status", "cancelled");
+    if (data) setExistingBookings(data);
+  };
+
+  const slotStates = useMemo(() => {
+    const now = new Date();
+    return TIME_SLOTS.map((slot) => {
+      if (!viewingDate) return { ...slot, state: "available" as const };
+
+      const slotTime = new Date(
+        viewingDate.getFullYear(),
+        viewingDate.getMonth(),
+        viewingDate.getDate(),
+        slot.h,
+        slot.m,
+      );
+
+      const isPast = slotTime <= now;
+
+      const isBooked = existingBookings.some((b) => {
+        const bDate = new Date(b.booking_date);
+        return (
+          isSameDay(bDate, viewingDate) &&
+          bDate.getHours() === slot.h &&
+          bDate.getMinutes() === slot.m
+        );
+      });
+
+      if (isBooked) return { ...slot, state: "booked" as const };
+      if (isPast) return { ...slot, state: "past" as const };
+      return { ...slot, state: "available" as const };
+    });
+  }, [viewingDate, existingBookings]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !property) return;
@@ -104,7 +144,7 @@ const Booking = () => {
       toast({
         variant: "destructive",
         title: "Select a viewing time",
-        description: "Please choose a time before submitting your request.",
+        description: "Please choose a time slot before submitting your request.",
       });
       return;
     }
@@ -239,28 +279,77 @@ const Booking = () => {
                             selected={viewingDate}
                             onSelect={(date) => {
                               setViewingDate(date);
+                              setViewingTime("");
                               setViewingDateOpen(false);
                             }}
-                            disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
+                            disabled={(date) =>
+                              date < new Date(new Date().setHours(0, 0, 0, 0))
+                            }
                             initialFocus
                           />
                         </PopoverContent>
                       </Popover>
+
                       <div className="space-y-2">
-                        <Label>Viewing Time</Label>
-                        <Select value={viewingTime} onValueChange={setViewingTime}>
-                          <SelectTrigger className="w-full">
-                            <Clock3 className="h-4 w-4 text-muted-foreground mr-2 shrink-0" />
-                            <SelectValue placeholder="Select a time" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {TIME_SLOTS.map((slot) => (
-                              <SelectItem key={slot.value} value={slot.value}>
-                                {slot.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="flex items-center justify-between">
+                          <Label className="flex items-center gap-1.5">
+                            <Clock3 className="h-4 w-4" />
+                            Viewing Time
+                          </Label>
+                          {viewingDate && (
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-muted border" />
+                                Past
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-100 border border-red-300" />
+                                Booked
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-primary" />
+                                Selected
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {!viewingDate ? (
+                          <p className="text-sm text-muted-foreground py-2">
+                            Select a date first to see available times.
+                          </p>
+                        ) : (
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {slotStates.map((slot) => {
+                              const isPast = slot.state === "past";
+                              const isBooked = slot.state === "booked";
+                              const isSelected = viewingTime === slot.value;
+                              return (
+                                <button
+                                  key={slot.value}
+                                  type="button"
+                                  disabled={isPast || isBooked}
+                                  onClick={() => setViewingTime(slot.value)}
+                                  className={cn(
+                                    "rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                                    isSelected &&
+                                      "bg-primary text-primary-foreground border-primary",
+                                    !isSelected &&
+                                      !isPast &&
+                                      !isBooked &&
+                                      "hover:bg-accent hover:border-primary/40 cursor-pointer",
+                                    isPast &&
+                                      "bg-muted text-muted-foreground border-muted cursor-not-allowed opacity-60",
+                                    isBooked &&
+                                      "bg-red-50 text-red-400 border-red-200 cursor-not-allowed",
+                                  )}
+                                >
+                                  {slot.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -278,7 +367,7 @@ const Booking = () => {
                       }
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      rows={5}
+                      rows={4}
                     />
                   </div>
 
