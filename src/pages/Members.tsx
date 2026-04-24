@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import emailjs from "@emailjs/browser";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -440,20 +441,47 @@ const Members = () => {
     e.preventDefault();
     if (!user) return;
     setSupportSubmitting(true);
+
     const { error } = await supabase.from("support_requests").insert({
       user_id: user.id,
       full_name: supportName,
       query: supportQuery,
       contact_method: supportContact,
     });
+
     if (error) {
       toast({ variant: "destructive", title: "Error", description: error.message });
-    } else {
-      toast({ title: "Request submitted!", description: "Our agent team will contact you shortly." });
-      setSupportName("");
-      setSupportQuery("");
-      setSupportContact("email");
+      setSupportSubmitting(false);
+      return;
     }
+
+    const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+    const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+    const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+    if (serviceId && templateId && publicKey) {
+      try {
+        await emailjs.send(
+          serviceId,
+          templateId,
+          {
+            from_name: supportName,
+            from_email: user.email,
+            query: supportQuery,
+            contact_method: supportContact,
+            to_email: "estatehubqa@gmail.com",
+          },
+          publicKey
+        );
+      } catch (emailErr) {
+        console.error("Email notification failed:", emailErr);
+      }
+    }
+
+    toast({ title: "Request submitted!", description: "Our agent team will contact you shortly." });
+    setSupportName("");
+    setSupportQuery("");
+    setSupportContact("email");
     setSupportSubmitting(false);
   };
 
