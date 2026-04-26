@@ -1,0 +1,58 @@
+Team project report
+
+The report length should be between 12,000 and 17,000 words. The upper number (17,000 words) roughly corresponds to 50 pages at 340 words per page. Word and page length figures do not include diagrams, tables, figures, references, and Appendices. A proposed structure follows, which you should use as a guide; feel free to modify it as you see fit.
+
+
+
+               Title​
+
+               ​List of team members and email addresses
+
+               ​Acknowledgements
+
+               ​Embedded link to the video
+
+               ​Table of Contents
+
+               ​Introduction
+
+Overview of project, summary of team organisation, project management strategy (frequency of meetings, internal procedures, etc.). However, you should start this section providing a motivation and a rationale for your project (e.g., where was a (partially) unsatisfied need for this product/service so we developed our stuff that does (more) things or does them better/faster/cheaper than the competition.
+
+               ​Background (aka State of the art) 
+
+Here you should put all what competition (if any) has done so far, so that you can distinguish between your new product/service and those already in the market.
+
+               ​Requirements
+
+Summary of requirements analysis phase (procedures followed, etc.), current system characterisation, functional and non-functional requirements for proposed system, feasibility study. You should base this chapter on your CS3028 requirements specification summary, plus whatever you learned since then.
+
+               Design
+
+Overview of design, key component designs, architecture, data organisation, file/database structure, user-interface design, requirements cross-reference, summary of any modifications made to design during later stages of project. You should base this chapter on your earlier design summary. It is imperative that you justify your design decisions here such as why you used the libraries you did, and why this architecture is more suitable than the alternatives you considered. It often helps to include diagrams here showing how the components fit together, or information flows through the application.
+
+               ​Coding and Integration
+
+Planning for coding & integration of system components, key implementation decisions, libraries used, use of existing software, algorithms, etc. We do not expect to see large amounts of code in the report; small code fragments may be used to illustrate major decisions, etc, and you can point to code files in your repository as needed too.
+
+               Testing and Evaluation​
+
+Testing strategy, description of test data, use of test harness code, test results. Evaluation starts from the result of test data to discuss the quality and the limitations of what you have done so far. In particular, you should discuss how well your software fulfills the requirements (and here is where non-functional ones play a major role). If your application was used by people, and provided you with feedback, then this is also part of the evaluation.
+
+               Conclusions and Further Work
+
+​Discussion of outcome of project, if original client requirements were not satisfied - explanation of why, possible future changes/additions to the system, lessons learnt. Also tell us what you'd do differently if you were to start over.
+
+                
+
+You should also include these two components in your application submission:
+
+
+
+               ​User Manual - the online help system
+
+Your application should have an online help system which is available and suitable to the current user. If I open any application on my laptop, or mobile, then there is always a 'help' menu available. Include one in your application too. 
+
+               ​Maintenance Manual - the Readme.md file in your team Git repository
+
+The readme.md file should be similar to others that you see on GitHub. This should detail the purpose of your application, a description of how to install and compile the system, hardware/software dependencies (including libraries), how to test the system, how to deploy the application, and how someone could extend the system.
+

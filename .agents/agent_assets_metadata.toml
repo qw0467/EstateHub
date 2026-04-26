@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "jhHywTFSKL2HIw-ZfYRhu"
+uri = "file://EstateHub_Project_Report.md"
+type = "text"
+title = "EstateHub Project Report (~15,000 words)"
