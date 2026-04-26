@@ -1,209 +1,212 @@
-# # 🏡 EstateHub – Proof of Concept Real Estate Platform
+# EstateHub Qatar
 
-### **Software Programming – Group Project (PoC Submission)**
+**Software Programming – Group Project**
 
-EstateHub is a proof-of-concept web application demonstrating a modern property-listing and membership-based real-estate platform.
-This submission includes the frontend codebase, Supabase database migrations, and configuration files required to run the system.
+EstateHub is a real estate platform for the Qatari property market, covering property discovery, membership-gated exclusive listings, a booking and offer system, a seller portal, and a full admin dashboard.
 
-The goal of this project is to validate the core system architecture, authentication flow, booking & membership logic, and the ability to scale in future development sprints.
-
----
-
-# ## 🚀 Features Implemented (PoC)
-
-### **🔐 Authentication**
-
-* User sign-up and login via Supabase Auth
-* Profiles stored using RLS-protected tables
-* Automatic login after sign-up (for PoC testing convenience)
-
-### **🏠 Property Listings**
-
-* View all properties
-* View exclusive (membership-only) listings
-* Property detail page
-* Gallery images, features, metadata
-
-### **⭐ Favorites**
-
-* Users can save/view favorite properties
-* Connected to the authenticated user
-* Fully protected with RLS
-
-### **📅 Booking Requests**
-
-* Submit a booking request for a property
-* Saved in the database under the user's account
-* Booking state managed via Supabase
-
-### **💎 Membership System**
-
-* Choose a membership tier (Monthly, Yearly, etc.)
-* Membership saved in DB with tier, start_date, end_date
-* Membership unlocks **exclusive properties**
-* Payment gateway integration will be added in future (Stripe)
-
-### **🗄 Database**
-
-* Fully built schema with migrations
-* RLS for all tables
-* Profiles linked to `auth.users`
-* Bookings, payments, memberships, favorites, properties
+Built with React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, and Supabase.
 
 ---
 
-# ## 📂 Project Structure
+## Features
+
+### Buyers, Visitors & Sellers
+- Browse property listings with filters for price, type, location, bedrooms, and bathrooms
+- View detailed property pages with gallery, features, and contact options
+- Book property viewings by selecting available date and time slots
+- Submit purchase offers on properties
+- Save favourite properties to a personal wishlist
+- Defaults all users to Buyers and Sellers
+- Create, edit, and delete property listings from the Profile dashboard
+- View and manage incoming viewing enquiries from buyers
+- Mark listings as available, under offer, or sold
+
+### Membership Tiers
+
+| Plan | Price | Benefits |
+|---|---|---|
+| Free | QAR 0 | Browse public listings, basic enquiries |
+| Monthly Premium | QAR 360 / month | Exclusive listings, priority support, VIP previews, market insights, concierge services |
+| Yearly Premium | QAR 3,640 / year | All Monthly benefits at a discounted rate |
+
+Premium members unlock the **Exclusive Listings** portal — high-end properties not visible to free users. Membership gates update immediately after purchase without requiring re-login.
+
+
+### Admin Panel (`/admin`)
+- Manage users: view roles, suspend accounts
+- Manage properties: approve or remove listings
+- Monitor all bookings and memberships across the platform
+
+### Test Accounts 
+- Admin : Admin@gmail.com / Password: Admin123  
+- Sample (Basic Account): sample@gmail.com / Password: Sample123
+
+---
+
+## Pages
+
+| Route | Page |
+|---|---|
+| `/` | Landing page with hero and featured listings |
+| `/properties` | Search and browse all properties |
+| `/property/:id` | Property detail view |
+| `/exclusive` | Members-only luxury listings |
+| `/booking/:id` | Viewing and offer booking engine |
+| `/membership` | Pricing table and subscription management |
+| `/profile` | User dashboard — appointments, listings, enquiries |
+| `/admin` | Admin panel (admin role required) |
+| `/auth` | Login and sign-up |
+| `/terms` | Terms and conditions |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | React 18 + TypeScript |
+| Build tool | Vite |
+| Styling | Tailwind CSS + shadcn/ui (Radix UI) |
+| Backend / DB | Supabase (PostgreSQL + GoTrue Auth + PostgREST) |
+| Data fetching | TanStack Query (React Query) |
+| Forms | React Hook Form + Zod |
+| Date handling | date-fns |
+| Icons | Lucide React |
+| Email support | EmailJS |
+
+---
+
+## Project Structure
 
 ```
-project/
-│
-├── public/               # Static assets
-├── src/                  # React frontend (components, pages, hooks, lib)
-├── supabase/             # SQL migration files + config.toml
-│
-├── .env                  # Environment variables (public Supabase creds only)
-├── package.json          # Dependencies + scripts
-├── vite.config.ts        # Vite configuration
-├── tailwind.config.ts    # Tailwind CSS
-├── tsconfig.json         # TypeScript configs
-└── README.md             # This file
+src/
+├── components/
+│   ├── ui/               # shadcn/ui primitives (Button, Card, Dialog, etc.)
+│   ├── ListingForm.tsx   # Add / edit property form for sellers
+│   ├── Navbar.tsx
+│   ├── Footer.tsx
+│   ├── PaymentModal.tsx  # Simulated card payment with Luhn validation
+│   ├── PropertyCard.tsx
+│   └── ProtectedRoute.tsx
+├── contexts/
+│   └── AuthContext.tsx   # Global auth state, role gates, membership state
+├── lib/
+│   └── utils.ts          # Shared helpers: formatPrice, statusVariant, cn
+├── pages/
+│   ├── Index.tsx
+│   ├── Properties.tsx
+│   ├── PropertyDetail.tsx
+│   ├── Exclusive.tsx
+│   ├── Booking.tsx
+│   ├── Membership.tsx
+│   ├── Profile.tsx
+│   ├── Admin.tsx
+│   ├── Auth.tsx
+│   └── Terms.tsx
+supabase/
+└── migrations/           # SQL migration files
 ```
 
 ---
 
-# ## 🔧 Installation & Setup
+## Database Schema
 
-### ### **🛠️ Prerequisites**
+| Table | Purpose |
+|---|---|
+| `profiles` | Extends auth users with display name, bio, phone, role |
+| `properties` | Listings: price, location, type, status, exclusive flag |
+| `memberships` | User subscription tier and expiry date |
+| `bookings` | Viewing requests and purchase offers |
 
-Before running the project, make sure you have the following installed on your system:
+### Security
+- RLS policies on all tables — users can only read and write their own data
+- `unique_property_slot` constraint prevents double-booking the same property at the same time slot
+- `unique_user_membership` constraint enforces one active membership record per user
+- Admin role is stored in Supabase `app_metadata` (JWT-embedded) — it cannot be self-assigned by a user or overwritten by a database trigger
+- RLS admin policies read from the JWT, not the `profiles` table
 
-Node.js (version 18 or higher)
+---
 
-Download from:
-https://nodejs.org/
+## Getting Started
 
-Node.js includes npm, which is required to install and manage project dependencies.
+### Prerequisites
 
-Verify that Node and npm are installed:
+Node.js v18 or higher — download from https://nodejs.org/
 
+Verify installation:
+```bash
 node -v
 npm -v
+```
 
-
-If both commands output version numbers, you're ready to continue.
-
-### ### **1️⃣ Install Dependencies**
-
-Make sure Node.js (v18+) is installed.
-
-Run:
+### Install dependencies
 
 ```bash
 npm install
 ```
 
----
+### Configure environment variables
 
-### ### **2️⃣ Configure Environment Variables**
-
-Create a `.env` file (this project already includes one with only **public** safe values).
-
-Required variables:
+Create a `.env` file at the project root:
 
 ```
-VITE_SUPABASE_URL=your_project_url
-VITE_SUPABASE_PUBLISHABLE_KEY=your_anon_key
-VITE_SUPABASE_PROJECT_ID=your_project_id
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+VITE_EMAILJS_PUBLIC_KEY=your_emailjs_public_key
+VITE_EMAILJS_SERVICE_ID=your_emailjs_service_id
+VITE_EMAILJS_TEMPLATE_ID=your_emailjs_template_id
 ```
 
-These values are **public** Supabase credentials and safe to use in frontend code.
+Never commit `.env` to version control.
 
----
-
-### ### **3️⃣ Run the Development Server**
+### Run the development server
 
 ```bash
 npm run dev
 ```
 
-The development server will start automatically.  
-Open the URL shown in your terminal (e.g., http://localhost:xxxx).
+---
 
+## Database Setup (Supabase)
+
+1. Open the Supabase Dashboard and go to the SQL Editor
+2. Run each `.sql` file from `supabase/migrations/` in order
+3. This creates all tables, RLS policies, and constraints
 
 ---
 
-# ## 🗄 Database Setup (Supabase)
+## Roles & Access
 
-This project includes a `/supabase` folder containing:
-
-* SQL migration files
-* Supabase configuration (`config.toml`)
-
-To apply the migrations to a new Supabase project:
-
-1. Open Supabase Dashboard → SQL Editor
-2. Copy each `.sql` file in order
-3. Execute them to create tables + RLS policies
-
-Alternatively, Supabase CLI can be used (not required for PoC).
+| Role | How it is set | Access level |
+|---|---|---|
+| `free` | Default on sign-up | Public listings, basic booking |
+| `member` | Membership purchase | + Exclusive listings and premium features |
+| `seller` | Admin assignment | + Create and manage property listings |
+| `admin` | Supabase `app_metadata` | Full admin panel |
 
 ---
 
-# ## ⚙️ Tech Stack
+## Known Limitations
 
-### **Frontend**
-
-* React + TypeScript
-* Vite
-* TailwindCSS + ShadCN UI components
-
-### **Backend / Database**
-
-* **Supabase** (PostgreSQL, Auth, RLS)
-* Supabase JS Client
-
-### **Deployment**
-
-* Local development only (PoC stage)
+- **Payment is simulated.** The payment modal validates card numbers using the Luhn algorithm but does not connect to a real payment processor. Membership is written to the database client-side after the card check. A production build should replace this with a server-side Supabase Edge Function and a real provider such as Stripe.
+- The `seller` role must be assigned manually by an admin through the admin panel or Supabase dashboard.
+- EmailJS credentials must be configured in environment variables for the support contact form to send emails in production.
 
 ---
 
-# ## 📌 Future Work
+## Team
 
-Planned for next sprint:
+**Group 2**
 
-* Admin dashboard for reviewing bookings & listings
-* Owner/agent portal for uploading properties
-* Full payment integration (Stripe)
-* Viewing scheduling system
-* Email verification + improved auth
-* Improved UI/UX + responsiveness
+- Muhammad Qasim
+- Amir Radwani
+- Faisal
+- Assad
 
----
-
-# ## 👥 Team Members
-
-**Group 2 – Advanced Manufacturing Use-Case**
-
-* Muhammad Qasim 
-* Amir Radwani
-* Faisal
-* Assad
+Support email: estatehubqa@gmail.com
 
 ---
-
-# ## 📝 Notes for Marker
-
-This submission is intentionally lightweight and focuses on **demonstrating technical viability**, per project requirements:
-
-* No `node_modules` included
-* All environment keys are public and safe
-* RLS ensures security at database level
-* PoC functionality validated against project scope
-
----
-
-# ## 📄 License
 
 Academic submission – not licensed for commercial use.
-
