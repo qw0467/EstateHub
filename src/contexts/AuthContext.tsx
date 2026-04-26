@@ -42,7 +42,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [membership, setMembership] = useState<Membership | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchRole = async (): Promise<UserRole> => {
+  const fetchRole = async (currentUser?: User | null): Promise<UserRole> => {
+    // Primary: read from app_metadata (set via admin API, present in JWT)
+    const appRole = (currentUser ?? user)?.app_metadata?.role as UserRole | undefined;
+    if (appRole && ["free", "seller", "member", "admin"].includes(appRole)) {
+      setRole(appRole);
+      return appRole;
+    }
+    // Fallback: RPC reads from profiles table
     const { data } = await supabase.rpc("get_current_user_role");
     const resolved = (data as UserRole) ?? "free";
     setRole(resolved);
@@ -90,7 +97,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // This prevents ProtectedRoute from reading a stale "free" role and
         // redirecting a legitimate admin away on initial page load / refresh.
         await Promise.all([
-          fetchRole(),
+          fetchRole(session.user),
           fetchMembership(session.user.id),
         ]);
       }
@@ -109,7 +116,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Role and membership are fetched asynchronously on auth-state changes
         // (sign-in, token refresh).  The initial bootstrap already awaits them,
         // so this covers subsequent changes without blocking the UI.
-        fetchRole();
+        fetchRole(session.user);
         fetchMembership(session.user.id);
       } else {
         setRole("free");
