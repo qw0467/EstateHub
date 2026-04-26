@@ -132,6 +132,9 @@ const Index = () => {
                 <div className="text-white/80 text-sm">Expert Agents</div>
               </div>
             </div>
+            <p className="text-white/50 text-xs mt-4 max-w-2xl mx-auto">
+              * Values are exaggerated for demonstration purposes only.
+            </p>
           </div>
         </div>
 
