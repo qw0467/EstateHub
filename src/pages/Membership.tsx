@@ -34,7 +34,7 @@ const pricingPlans = [
   {
     name: "Monthly Premium",
     tier: "monthly",
-    price: 0.99,
+    price: 360,
     period: "month",
     description: "For serious property hunters",
     features: [
@@ -50,7 +50,7 @@ const pricingPlans = [
   {
     name: "Yearly Premium",
     tier: "yearly",
-    price: 0.99,
+    price: 3640,
     period: "year",
     description: "Best value for committed buyers",
     features: [
