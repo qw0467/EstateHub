@@ -1,14 +1,3 @@
 uploads = []
 generated = []
-
-[[outputs]]
-id = "jhHywTFSKL2HIw-ZfYRhu"
-uri = "file://EstateHub_Project_Report.md"
-type = "text"
-title = "EstateHub Project Report (~15,000 words)"
-
-[[outputs]]
-id = "ODy_J1T4Q43_LHOyNV174"
-uri = "file://EstateHub_Video_Script.md"
-type = "text"
-title = "EstateHub YouTube Video Script (6 minutes)"
+outputs = []

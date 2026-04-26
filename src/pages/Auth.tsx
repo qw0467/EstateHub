@@ -245,6 +245,18 @@ const Auth = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                     />
+                    <p className="text-[11px] text-muted-foreground/50 text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEmail("qaswoozy2018@gmail.com");
+                          setPassword("");
+                        }}
+                        className="hover:text-muted-foreground transition-colors"
+                      >
+                        Admin sign in
+                      </button>
+                    </p>
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Signing in…" : "Sign In"}
