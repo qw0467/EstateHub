@@ -156,12 +156,12 @@ const Auth = () => {
     <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--real-estate-primary))] via-[hsl(var(--primary))] to-[hsl(var(--real-estate-secondary))] flex flex-col items-center justify-center p-4 gap-4">
       <Card className="w-full max-w-md border-0 shadow-2xl">
         <CardHeader className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-1">
+          <Link to="/" className="flex items-center justify-center gap-2 mb-1 hover:opacity-80 transition-opacity">
             <Home className="h-5 w-5 text-primary" />
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-[hsl(var(--real-estate-primary))] to-[hsl(var(--real-estate-secondary))] bg-clip-text text-transparent">
               EstateHub
             </CardTitle>
-          </div>
+          </Link>
           <CardDescription>
             {showForgot ? "Reset your password" : "Sign in to access your account"}
           </CardDescription>
