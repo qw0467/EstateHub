@@ -38,7 +38,7 @@ Premium members unlock the **Exclusive Listings** portal — high-end properties
 - Monitor all bookings and memberships across the platform
 
 ### Test Accounts 
-- Admin : Admin@gmail.com / Password: Admin123  
+- Admin : *****@gmail.com / Password: *****123 
 - Sample (Basic Account): sample@gmail.com / Password: Sample123
 
 ---
